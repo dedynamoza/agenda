@@ -2,11 +2,40 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/user";
-import type { ActivityType, Prisma, TransportationType } from "@prisma/client";
+import type { ActivityType, TransportationType } from "@prisma/client";
+
+interface ActivityData {
+  date: Date;
+  time: string;
+  activityType: ActivityType;
+  branchId: string;
+  employeeId: string;
+  createdBy: string;
+  title?: string;
+  description?: string;
+  birthDate?: Date;
+  idCard?: string;
+  departureDate?: Date;
+  transportationType?: TransportationType;
+  transportationFrom?: string;
+  destination?: string;
+  bookingFlightNo?: string;
+}
+
+interface DailyActivityData {
+  activityId: string;
+  date: Date;
+  needHotel: boolean;
+  hotelCheckIn?: Date;
+  hotelCheckOut?: Date;
+  hotelName?: string;
+  hotelAddress?: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
+
     if (!user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -17,12 +46,18 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get("year");
     const employeeId = searchParams.get("employeeId");
 
-    // Build where clause
-    const whereClause: Prisma.ActivityWhereInput = {
-      createdBy: user.id,
+    const whereClause: {
+      createdBy: string;
+      employeeId?: string;
+      date?: {
+        gte?: Date;
+        lt?: Date;
+        lte?: Date;
+      };
+    } = {
+      createdBy: user.id as string,
     };
 
-    // Add employee filter if provided
     if (employeeId) {
       whereClause.employeeId = employeeId;
     }
@@ -43,7 +78,12 @@ export async function GET(request: NextRequest) {
           user: true,
           branch: true,
           employee: true,
-          subActivities: {
+          dailyActivities: {
+            include: {
+              activityItems: {
+                orderBy: { order: "asc" },
+              },
+            },
             orderBy: { date: "asc" },
           },
         },
@@ -75,9 +115,15 @@ export async function GET(request: NextRequest) {
       const activities = await prisma.activity.findMany({
         where: whereClause,
         include: {
+          user: true,
           branch: true,
           employee: true,
-          subActivities: {
+          dailyActivities: {
+            include: {
+              activityItems: {
+                orderBy: { order: "asc" },
+              },
+            },
             orderBy: { date: "asc" },
           },
         },
@@ -124,30 +170,27 @@ export async function POST(request: NextRequest) {
       transportationFrom,
       destination,
       bookingFlightNo,
-      needHotel,
-      hotelCheckInCheckOut,
-      hotelName,
-      hotelAddress,
-      subActivities,
+      dailyActivities,
     } = body;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activityData: any = {
-      title,
-      description,
+    const activityData: ActivityData = {
       date: new Date(date),
       time,
       activityType: activityType as ActivityType,
       branchId,
       employeeId,
-      createdBy: user.id,
+      createdBy: user.id as string,
     };
 
-    // Add Perjalanan Dinas specific fields if activity type is PERJALANAN_DINAS
-    if (activityType === "PERJALANAN_DINAS") {
-      if (departureDate) activityData.departureDate = new Date(departureDate);
+    // Add title and description for non-PERJALANAN_DINAS activities
+    if (activityType !== "PERJALANAN_DINAS") {
+      activityData.title = title;
+      activityData.description = description;
+    } else {
+      // Add Perjalanan Dinas specific fields if activity type is PERJALANAN_DINAS
       if (birthDate) activityData.birthDate = new Date(birthDate);
       if (idCard) activityData.idCard = idCard;
+      if (departureDate) activityData.departureDate = new Date(departureDate);
       if (transportationType)
         activityData.transportationType =
           transportationType as TransportationType;
@@ -155,42 +198,77 @@ export async function POST(request: NextRequest) {
         activityData.transportationFrom = transportationFrom;
       if (destination) activityData.destination = destination;
       if (bookingFlightNo) activityData.bookingFlightNo = bookingFlightNo;
-      activityData.needHotel = needHotel || false;
-
-      if (needHotel) {
-        if (hotelCheckInCheckOut) {
-          const { checkIn, checkOut } = hotelCheckInCheckOut;
-          if (checkIn) activityData.hotelCheckIn = new Date(checkIn);
-          if (checkOut) activityData.hotelCheckOut = new Date(checkOut);
-        }
-        if (hotelName) activityData.hotelName = hotelName;
-        if (hotelAddress) activityData.hotelAddress = hotelAddress;
-      }
     }
 
-    const activity = await prisma.activity.create({
-      data: activityData,
-      include: {
-        user: true,
-        branch: true,
-        employee: true,
-        subActivities: true,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the main activity
+      const activity = await tx.activity.create({
+        data: activityData,
+        include: {
+          user: true,
+          branch: true,
+          employee: true,
+        },
+      });
+
+      // Create daily activities for PERJALANAN_DINAS
+      if (
+        activityType === "PERJALANAN_DINAS" &&
+        dailyActivities &&
+        dailyActivities.length > 0
+      ) {
+        for (const dailyActivity of dailyActivities) {
+          const dailyActivityData: DailyActivityData = {
+            activityId: activity.id,
+            date: new Date(dailyActivity.date),
+            needHotel: dailyActivity.needHotel || false,
+          };
+
+          if (dailyActivity.needHotel) {
+            if (dailyActivity.hotelCheckIn)
+              dailyActivityData.hotelCheckIn = new Date(
+                dailyActivity.hotelCheckIn
+              );
+            if (dailyActivity.hotelCheckOut)
+              dailyActivityData.hotelCheckOut = new Date(
+                dailyActivity.hotelCheckOut
+              );
+            if (dailyActivity.hotelName)
+              dailyActivityData.hotelName = dailyActivity.hotelName;
+            if (dailyActivity.hotelAddress)
+              dailyActivityData.hotelAddress = dailyActivity.hotelAddress;
+          }
+
+          const createdDailyActivity = await tx.dailyActivity.create({
+            data: dailyActivityData,
+          });
+
+          // Create activity items for this daily activity
+          if (
+            dailyActivity.activityItems &&
+            dailyActivity.activityItems.length > 0
+          ) {
+            type ActivityItem = {
+              name: string;
+            };
+
+            await tx.activityItem.createMany({
+              data: dailyActivity.activityItems.map(
+                (item: ActivityItem, index: number) => ({
+                  dailyActivityId: createdDailyActivity.id,
+                  name: item.name,
+                  order: index,
+                })
+              ),
+            });
+          }
+        }
+      }
+
+      return activity;
     });
 
-    // Create sub-activities if provided
-    if (subActivities && subActivities.length > 0) {
-      await prisma.subActivity.createMany({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: subActivities.map((sub: any) => ({
-          activityId: activity.id,
-          date: new Date(sub.date),
-          description: sub.description,
-        })),
-      });
-    }
-
-    return NextResponse.json(activity);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error creating activity:", error);
     return NextResponse.json(

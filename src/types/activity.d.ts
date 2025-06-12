@@ -1,7 +1,7 @@
-export interface Activity {
+export interface ActivityRes {
   id: string;
-  title: string;
-  description: string;
+  title?: string; // Optional for PERJALANAN_DINAS
+  description?: string; // Optional for PERJALANAN_DINAS
   date: Date;
   time: string;
   activityType: string;
@@ -13,51 +13,41 @@ export interface Activity {
   branch: { name: string };
   employee: { name: string };
   user: { name: string };
+  branchId: string;
+  employeeId: string;
+  birthDate?: Date;
+  idCard?: string;
+  departureDate?: Date;
+  transportationType?: string;
+  transportationFrom?: string;
+  destination?: string;
+  bookingFlightNo?: string;
+
+  // For PERJALANAN_DINAS only
+  dailyActivities?: Array<{
+    id: string;
+    date: Date;
+    needHotel: boolean;
+    hotelCheckIn?: Date;
+    hotelCheckOut?: Date;
+    hotelName?: string;
+    hotelAddress?: string;
+    activityItems: Array<{
+      id: string;
+      name: string;
+      order: number;
+    }>;
+  }>;
 }
 
-export type ActivityRes = {
-  id: string;
-  activityType: ActivityType;
-  birthDate: string | null;
-  bookingFlightNo: string | null;
-  branchId: string;
-  branch: Branch;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  date: string;
-  departureDate: string | null;
-  description: string;
-  destination: string | null;
-  employeeId: string;
-  employee: Employee;
-  hotelAddress: string | null;
-  hotelCheckIn: string | null;
-  hotelCheckOut: string | null;
-  hotelName: string | null;
-  idCard: string | null;
+export interface DailyActivityFormData {
+  date: Date;
   needHotel: boolean;
-  rescheduledFrom: string | null;
-  rescheduledTo: string | null;
-  rescheduledTimeFrom: string | null;
-  rescheduledTimeTo: string | null;
-  strikethrough: boolean;
-  subActivities: SubActivity[];
-  time: string;
-  title: string;
-  transportationFrom: string | null;
-  transportationType: string | null;
-};
-
-export type SubActivity = {
-  id: string;
-  date: string;
-  description: string;
-};
-
-export type ActivityType =
-  | "PROSPECT_MEETING"
-  | "ESCORT_TEAM"
-  | "PERJALANAN_DINAS"
-  | "TAMU_UNDANGAN"
-  | "RETENTION_TEAM";
+  hotelCheckIn?: Date | undefined;
+  hotelCheckOut?: Date | undefined;
+  hotelName?: string;
+  hotelAddress?: string;
+  activityItems: Array<{
+    name: string;
+  }>;
+}

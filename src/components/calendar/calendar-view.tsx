@@ -42,6 +42,9 @@ import {
   ChevronDown,
   MoreHorizontal,
   CalendarCheck,
+  Plane,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 
@@ -75,6 +78,14 @@ const ACTIVITY_COLORS = {
   PERJALANAN_DINAS: "bg-purple-500",
   TAMU_UNDANGAN: "bg-amber-500",
   RETENTION_TEAM: "bg-red-500",
+};
+
+const ACTIVITY_ICONS = {
+  PROSPECT_MEETING: Briefcase,
+  ESCORT_TEAM: Users,
+  PERJALANAN_DINAS: Plane,
+  TAMU_UNDANGAN: Users,
+  RETENTION_TEAM: Users,
 };
 
 export function ModernCalendarView({
@@ -152,6 +163,14 @@ export function ModernCalendarView({
     },
     [activities]
   );
+
+  // Function to get activity display text based on type
+  const getActivityDisplayText = useCallback((activity: ActivityRes) => {
+    if (activity.activityType === "PERJALANAN_DINAS") {
+      return activity.destination || "Perjalanan Dinas";
+    }
+    return activity.title || "";
+  }, []);
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleDateClick = useCallback(
@@ -431,7 +450,7 @@ export function ModernCalendarView({
                             dayActivities[0].strikethrough && "opacity-60"
                           )}
                         >
-                          {/* Mobile: Show only time, Desktop: Show time + title */}
+                          {/* Mobile: Show only time, Desktop: Show time + appropriate text */}
                           <div className="block sm:hidden">
                             <div
                               className={cn(
@@ -458,7 +477,11 @@ export function ModernCalendarView({
                                 dayActivities[0].strikethrough && "line-through"
                               )}
                             >
-                              {dayActivities[0].title}
+                              {dayActivities[0].activityType ===
+                                "PERJALANAN_DINAS" &&
+                              dayActivities[0].destination
+                                ? `Dinas Ke ${dayActivities[0].destination}`
+                                : getActivityDisplayText(dayActivities[0])}
                             </div>
                           </div>
                         </div>
@@ -476,7 +499,7 @@ export function ModernCalendarView({
                               <span className="block sm:hidden">
                                 <MoreHorizontal className="h-2 w-2 mx-auto" />
                               </span>
-                              <span className="hidden sm:block">
+                              <span className="hidden sm:block font-medium">
                                 + {dayActivities.length - 1} lainnya
                               </span>
                             </div>
@@ -492,56 +515,91 @@ export function ModernCalendarView({
                               </h4>
                             </div>
                             <ScrollArea className="h-40 sm:h-48 p-2 pr-4 pt-0">
-                              {dayActivities.map((activity: ActivityRes) => (
-                                <div
-                                  key={activity.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleActivityClick(activity, e);
-                                  }}
-                                  className={cn(
-                                    "p-2 sm:p-3 rounded-md cursor-pointer hover:opacity-90 transition-all duration-200 mt-2 text-white",
-                                    ACTIVITY_COLORS[
-                                      activity.activityType as keyof typeof ACTIVITY_COLORS
-                                    ] || "bg-slate-500",
-                                    activity.strikethrough && "opacity-60"
-                                  )}
-                                >
-                                  <div className="flex items-center justify-between mb-1 sm:mb-2">
-                                    <span
+                              {dayActivities.map((activity: ActivityRes) => {
+                                const ActivityIcon =
+                                  ACTIVITY_ICONS[
+                                    activity.activityType as keyof typeof ACTIVITY_ICONS
+                                  ] || Calendar;
+                                const isPerjalananDinas =
+                                  activity.activityType === "PERJALANAN_DINAS";
+
+                                return (
+                                  <div
+                                    key={activity.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleActivityClick(activity, e);
+                                    }}
+                                    className={cn(
+                                      "p-2 sm:p-3 rounded-md cursor-pointer hover:opacity-90 transition-all duration-200 mt-2 text-white",
+                                      ACTIVITY_COLORS[
+                                        activity.activityType as keyof typeof ACTIVITY_COLORS
+                                      ] || "bg-slate-500",
+                                      activity.strikethrough && "opacity-60"
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <ActivityIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                        <span
+                                          className={cn(
+                                            "font-medium text-xs sm:text-sm",
+                                            activity.strikethrough &&
+                                              "line-through"
+                                          )}
+                                        >
+                                          {activity.time}
+                                        </span>
+                                      </div>
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] sm:text-[11px] bg-white/20 text-white border-0"
+                                      >
+                                        {activity.activityType.replace(
+                                          "_",
+                                          " "
+                                        )}
+                                      </Badge>
+                                    </div>
+
+                                    {/* Display appropriate content based on activity type */}
+                                    {!isPerjalananDinas && activity.title && (
+                                      <div
+                                        className={cn(
+                                          "text-xs sm:text-sm opacity-90",
+                                          activity.strikethrough &&
+                                            "line-through"
+                                        )}
+                                      >
+                                        {activity.title}
+                                      </div>
+                                    )}
+
+                                    {isPerjalananDinas &&
+                                      activity.destination && (
+                                        <div
+                                          className={cn(
+                                            "text-xs sm:text-sm opacity-90",
+                                            activity.strikethrough &&
+                                              "line-through"
+                                          )}
+                                        >
+                                          Dinas Ke {activity.destination}
+                                        </div>
+                                      )}
+
+                                    <div
                                       className={cn(
-                                        "font-medium text-xs sm:text-sm",
+                                        "text-[10px] sm:text-xs opacity-75 mt-1",
                                         activity.strikethrough && "line-through"
                                       )}
                                     >
-                                      {activity.time}
-                                    </span>
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-[10px] sm:text-xs bg-white/20 text-white border-0"
-                                    >
-                                      {activity.activityType.replace("_", " ")}
-                                    </Badge>
+                                      {activity.employee.name} •{" "}
+                                      {activity.branch.name}
+                                    </div>
                                   </div>
-                                  <div
-                                    className={cn(
-                                      "text-xs sm:text-sm opacity-90",
-                                      activity.strikethrough && "line-through"
-                                    )}
-                                  >
-                                    {activity.title}
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "text-[10px] sm:text-xs opacity-75 mt-1",
-                                      activity.strikethrough && "line-through"
-                                    )}
-                                  >
-                                    {activity.employee.name} •{" "}
-                                    {activity.branch.name}
-                                  </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </ScrollArea>
                           </PopoverContent>
                         </Popover>

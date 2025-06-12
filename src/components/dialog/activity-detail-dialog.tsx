@@ -33,15 +33,18 @@ import {
   ArrowRight,
   Ticket,
   GitBranch,
-  MapPinCheck,
+  MapPinIcon as MapPinCheck,
   TicketCheck,
   DoorOpen,
   DoorClosed,
+  CalendarDays,
+  Hotel,
+  ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { ActivityRes } from "@/types/activity";
+import type { ActivityRes } from "@/types/activity";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ActivityDetailDialogProps {
@@ -66,6 +69,7 @@ export function ActivityDetailDialog({
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
 
   const deleteMutation = useMutation({
@@ -81,10 +85,12 @@ export function ActivityDetailDialog({
       toast.success("Kegiatan berhasil dihapus!");
       onOpenChange(false);
       setIsDeleting(false);
+      setShowDeleteConfirm(false);
     },
     onError: () => {
       toast.error("Gagal menghapus kegiatan");
       setIsDeleting(false);
+      setShowDeleteConfirm(false);
     },
   });
 
@@ -99,10 +105,12 @@ export function ActivityDetailDialog({
   };
 
   const handleDelete = () => {
-    if (
-      activity &&
-      window.confirm("Apakah Anda yakin ingin menghapus kegiatan ini?")
-    ) {
+    setShowDeleteConfirm(true);
+  };
+
+  // Fungsi untuk konfirmasi hapus
+  const confirmDelete = () => {
+    if (activity) {
       setIsDeleting(true);
       deleteMutation.mutate(activity.id);
     }
@@ -117,7 +125,13 @@ export function ActivityDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#a3a3a3 transparent",
+          }}
+          className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader className="space-y-3">
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Calendar className="h-5 w-5 text-blue-600" />
@@ -199,22 +213,35 @@ export function ActivityDetailDialog({
                     {getActivityTypeLabel(activity.activityType)}
                   </Badge>
                   <div>
-                    <h3
-                      className={cn(
-                        "text-lg font-semibold text-slate-800",
-                        isRescheduled && "line-through text-slate-500"
-                      )}
-                    >
-                      {activity.title}
-                    </h3>
-                    <p
-                      className={cn(
-                        "text-slate-600",
-                        isRescheduled && "line-through text-slate-400"
-                      )}
-                    >
-                      {activity.description}
-                    </p>
+                    {!isPerjalananDinas ? (
+                      <>
+                        <h3
+                          className={cn(
+                            "text-lg font-semibold text-slate-800",
+                            isRescheduled && "line-through text-slate-500"
+                          )}
+                        >
+                          {activity.title}
+                        </h3>
+                        <p
+                          className={cn(
+                            "text-slate-600",
+                            isRescheduled && "line-through text-slate-400"
+                          )}
+                        >
+                          {activity.description}
+                        </p>
+                      </>
+                    ) : (
+                      <h3
+                        className={cn(
+                          "text-lg font-semibold text-slate-800",
+                          isRescheduled && "line-through text-slate-500"
+                        )}
+                      >
+                        Dinas Ke {activity.destination}
+                      </h3>
+                    )}
                   </div>
                 </div>
 
@@ -303,6 +330,18 @@ export function ActivityDetailDialog({
                       </div>
                     )}
 
+                    {activity.departureDate && (
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium">
+                          Tanggal Keberangkatan:
+                        </span>
+                        <span className={isRescheduled ? "line-through" : ""}>
+                          {format(new Date(activity.departureDate), "PP")}
+                        </span>
+                      </div>
+                    )}
+
                     {activity.transportationType && (
                       <div className="flex items-center gap-2">
                         <Ticket className="h-4 w-4 text-slate-500" />
@@ -318,7 +357,7 @@ export function ActivityDetailDialog({
                     {activity.bookingFlightNo && (
                       <div className="flex items-center gap-2">
                         <TicketCheck className="h-4 w-4 text-slate-500" />
-                        <span className="font-medium">No. Book</span>
+                        <span className="font-medium">No. Booking/Flight:</span>
                         <span className={isRescheduled ? "line-through" : ""}>
                           {activity.bookingFlightNo}
                         </span>
@@ -346,103 +385,151 @@ export function ActivityDetailDialog({
                     )}
                   </div>
 
-                  {/* Hotel Information */}
-                  {activity.needHotel && (
-                    <>
-                      <Separator />
-                      <div className="space-y-3">
-                        <h5 className="font-semibold text-slate-800">
-                          Informasi Hotel
-                        </h5>
-
-                        <div className="grid grid-cols-1 gap-2 text-sm">
-                          {activity.hotelName && (
-                            <div className="flex items-center gap-2">
-                              <Building className="h-4 w-4 text-slate-500" />
-                              <span className="font-medium">Hotel:</span>
-                              <span
-                                className={isRescheduled ? "line-through" : ""}
-                              >
-                                {activity.hotelName}
-                              </span>
-                            </div>
-                          )}
-
-                          {activity.hotelCheckIn && (
-                            <div className="flex items-center gap-2">
-                              <DoorOpen className="h-4 w-4 text-slate-500" />
-                              <span className="font-medium">Check-in:</span>
-                              <span
-                                className={isRescheduled ? "line-through" : ""}
-                              >
-                                {format(new Date(activity.hotelCheckIn), "PP")}
-                              </span>
-                            </div>
-                          )}
-
-                          {activity.hotelCheckOut && (
-                            <div className="flex items-center gap-2">
-                              <DoorClosed className="h-4 w-4 text-slate-500" />
-                              <span className="font-medium">Check-out:</span>
-                              <span
-                                className={isRescheduled ? "line-through" : ""}
-                              >
-                                {format(new Date(activity.hotelCheckOut), "PP")}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {activity.hotelAddress && (
-                          <div className="text-sm">
-                            <span className="font-medium">Alamat:</span>
-                            <p
-                              className={cn(
-                                "text-slate-600 mt-1",
-                                isRescheduled && "line-through text-slate-400"
-                              )}
-                            >
-                              {activity.hotelAddress}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Sub Activities */}
-                  {activity.subActivities &&
-                    activity.subActivities.length > 0 && (
+                  {/* Daily Activities */}
+                  {activity.dailyActivities &&
+                    activity.dailyActivities.length > 0 && (
                       <>
                         <Separator />
                         <div className="space-y-3">
                           <h5 className="font-semibold text-slate-800">
-                            Kegiatan Dinas
+                            Kegiatan Harian
                           </h5>
-                          <div className="space-y-2">
-                            {activity.subActivities.map((sub) => (
+                          <div className="space-y-4">
+                            {activity.dailyActivities.map((daily) => (
                               <div
-                                key={sub.id}
-                                className="flex flex-col gap-1 p-2 bg-slate-100/80 rounded"
+                                key={daily.id}
+                                className="p-3 bg-slate-50 rounded-md"
                               >
-                                <div
-                                  className={cn(
-                                    "text-sm font-bold text-slate-600 min-w-[80px]",
-                                    isRescheduled && "line-through"
-                                  )}
-                                >
-                                  {format(new Date(sub.date), "dd MMMM yyyy", {
-                                    locale: id,
-                                  })}
+                                <div className="flex items-center justify-between mb-2">
+                                  <div
+                                    className={cn(
+                                      "text-sm font-bold text-slate-700",
+                                      isRescheduled &&
+                                        "line-through text-slate-500"
+                                    )}
+                                  >
+                                    {format(
+                                      new Date(daily.date),
+                                      "dd MMMM yyyy",
+                                      { locale: id }
+                                    )}
+                                  </div>
                                 </div>
-                                <div
-                                  className={cn(
-                                    "text-sm text-slate-700",
-                                    isRescheduled && "line-through"
-                                  )}
-                                >
-                                  {sub.description}
+
+                                {/* Activity Items */}
+                                <div className="space-y-2 mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <ListChecks className="h-4 w-4 text-slate-500" />
+                                    <span className="font-medium text-sm">
+                                      Daftar Kegiatan:
+                                    </span>
+                                  </div>
+                                  <ul className="list-disc list-inside pl-1 space-y-1">
+                                    {daily.activityItems.map((item) => (
+                                      <li
+                                        key={item.id}
+                                        className={cn(
+                                          "text-sm text-slate-700",
+                                          isRescheduled &&
+                                            "line-through text-slate-500"
+                                        )}
+                                      >
+                                        {item.name}
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
+
+                                {/* Hotel Information */}
+                                {daily.needHotel && (
+                                  <div className="mt-3 pt-3 border-t border-slate-200">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Hotel className="h-4 w-4 text-slate-500" />
+                                      <span className="font-medium text-sm">
+                                        Informasi Hotel:
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-2 text-sm pl-6">
+                                      {daily.hotelName && (
+                                        <div className="flex items-center gap-2">
+                                          <Building className="h-4 w-4 text-slate-500" />
+                                          <span className="font-medium">
+                                            Hotel:
+                                          </span>
+                                          <span
+                                            className={
+                                              isRescheduled
+                                                ? "line-through"
+                                                : ""
+                                            }
+                                          >
+                                            {daily.hotelName}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {daily.hotelCheckIn && (
+                                        <div className="flex items-center gap-2">
+                                          <DoorOpen className="h-4 w-4 text-slate-500" />
+                                          <span className="font-medium">
+                                            Check-in:
+                                          </span>
+                                          <span
+                                            className={
+                                              isRescheduled
+                                                ? "line-through"
+                                                : ""
+                                            }
+                                          >
+                                            {format(
+                                              new Date(daily.hotelCheckIn),
+                                              "PP"
+                                            )}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {daily.hotelCheckOut && (
+                                        <div className="flex items-center gap-2">
+                                          <DoorClosed className="h-4 w-4 text-slate-500" />
+                                          <span className="font-medium">
+                                            Check-out:
+                                          </span>
+                                          <span
+                                            className={
+                                              isRescheduled
+                                                ? "line-through"
+                                                : ""
+                                            }
+                                          >
+                                            {format(
+                                              new Date(daily.hotelCheckOut),
+                                              "PP"
+                                            )}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {daily.hotelAddress && (
+                                        <div className="text-sm">
+                                          <span className="font-medium">
+                                            Alamat:
+                                          </span>
+                                          <p
+                                            className={cn(
+                                              "text-slate-600 mt-1 pl-6",
+                                              isRescheduled &&
+                                                "line-through text-slate-400"
+                                            )}
+                                          >
+                                            {daily.hotelAddress}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -504,6 +591,39 @@ export function ActivityDetailDialog({
         selectedDate={activity ? new Date(activity.date) : undefined}
         activity={activity}
       />
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            Apakah Anda yakin ingin menghapus kegiatan ini? Tindakan ini tidak
+            dapat dibatalkan.
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isDeleting}
+              className="cursor-pointer"
+            >
+              Tidak, Batalkan
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="cursor-pointer"
+            >
+              {isDeleting ? (
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : null}
+              Ya, Hapus
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

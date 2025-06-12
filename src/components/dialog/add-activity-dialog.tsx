@@ -37,10 +37,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 
 import {
@@ -50,16 +48,13 @@ import {
   TRANSPORTATION_TYPES,
   cn,
 } from "@/lib/utils";
-import { toast } from "sonner";
-import { format } from "date-fns";
-
 import {
   CalendarIcon,
   Check,
   ChevronDown,
   Loader2,
-  Trash2,
   User,
+  Plus,
 } from "lucide-react";
 import {
   activitySchema,
@@ -70,10 +65,14 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { ActivityRes } from "@/types/activity";
+import { toast } from "sonner";
+import type { ActivityRes } from "@/types/activity";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useInView } from "react-intersection-observer";
 import { useFieldArray, useForm } from "react-hook-form";
+import { AnimatePresence, motion } from "framer-motion";
+import { DailyActivityCard } from "./daily-activity-card";
+import { DatePicker } from "../ui/date-picker";
 
 interface ActivityFormDialogProps {
   open: boolean;
@@ -115,24 +114,30 @@ export function ActivityFormDialog({
       activityType: "PROSPECT_MEETING",
       branchId: "",
       employeeId: "",
-      needHotel: false,
-      subActivities: [{ date: undefined, description: "" }],
+      birthDate: null,
+      idCard: "",
+      departureDate: null,
+      transportationType: undefined,
+      transportationFrom: "",
+      destination: "",
+      bookingFlightNo: "",
+      dailyActivities: [],
     },
   });
 
+  // Field array for daily activities (PERJALANAN_DINAS)
   const {
-    fields: subActivitiesFields,
-    append,
-    remove,
+    fields: dailyActivitiesFields,
+    append: appendDailyActivity,
+    remove: removeDailyActivity,
   } = useFieldArray({
     control: form.control,
-    name: "subActivities",
+    name: "dailyActivities",
   });
 
   const watchActivityType = form.watch("activityType");
-  const watchNeedHotel = form.watch("needHotel");
 
-  // Fetch branches
+  // Get branches data
   const {
     data: branchesData,
     fetchNextPage: fetchBranchesNextPage,
@@ -146,7 +151,7 @@ export function ActivityFormDialog({
       const params = new URLSearchParams({
         page: pageParam.toString(),
         limit: "20",
-        search: searchNameQuery,
+        search: searchBranchQuery,
       });
       const response = await fetch(`/api/branches/search?${params}`);
       if (!response.ok) throw new Error("Failed to fetch branches");
@@ -158,7 +163,7 @@ export function ActivityFormDialog({
     initialPageParam: 1,
   });
 
-  // Fetch employees
+  // Get employees data
   const {
     data,
     fetchNextPage,
@@ -184,12 +189,12 @@ export function ActivityFormDialog({
     initialPageParam: 1,
   });
 
-  // Memmoize the list of employees for performance
+  // Memoize the list of employees for performance
   const employees = useMemo(() => {
     return data?.pages.flatMap((page) => page.employees) || [];
   }, [data]);
 
-  // Memmoize the list of branches for performance
+  // Memoize the list of branches for performance
   const branches = useMemo(() => {
     return branchesData?.pages.flatMap((page) => page.branches) || [];
   }, [branchesData]);
@@ -221,51 +226,81 @@ export function ActivityFormDialog({
 
   // Show/hide Perjalanan Dinas fields based on activity type
   useEffect(() => {
-    setShowPerjalananDinasFields(watchActivityType === "PERJALANAN_DINAS");
-  }, [watchActivityType]);
+    const isPerjalananDinas = watchActivityType === "PERJALANAN_DINAS";
+    setShowPerjalananDinasFields(isPerjalananDinas);
+
+    // Reset Perjalanan Dinas fields when switching from PERJALANAN_DINAS to other types
+    if (!isPerjalananDinas) {
+      form.setValue("birthDate", null);
+      form.setValue("idCard", "");
+      form.setValue("departureDate", null);
+      form.setValue("transportationType", undefined);
+      form.setValue("transportationFrom", "");
+      form.setValue("destination", "");
+      form.setValue("bookingFlightNo", "");
+      form.setValue("dailyActivities", []);
+    } else if (isPerjalananDinas && dailyActivitiesFields.length === 0) {
+      appendDailyActivity({
+        date: undefined,
+        needHotel: false,
+        activityItems: [{ name: "" }],
+      });
+    }
+  }, [
+    watchActivityType,
+    dailyActivitiesFields.length,
+    appendDailyActivity,
+    form,
+  ]);
 
   // Reset form when dialog opens/closes or activity changes
   useEffect(() => {
     if (open) {
       if (activity) {
-        form.reset({
-          title: activity.title,
-          description: activity.description,
+        // Handle editing existing activity
+        const formData: Partial<ActivityFormData> = {
+          title: activity.title || "",
+          description: activity.description || "",
           date: formatDate(new Date(activity.date)),
           time: activity.time,
           activityType:
             activity.activityType as ActivityFormData["activityType"],
           branchId: activity.branchId,
           employeeId: activity.employeeId,
-          birthDate: activity.birthDate
-            ? new Date(activity.birthDate)
-            : undefined,
+          birthDate: activity.birthDate ? new Date(activity.birthDate) : null,
           idCard: activity.idCard || "",
           departureDate: activity.departureDate
             ? new Date(activity.departureDate)
-            : undefined,
+            : null,
           transportationType:
             activity.transportationType as ActivityFormData["transportationType"],
           transportationFrom: activity.transportationFrom || "",
           destination: activity.destination || "",
           bookingFlightNo: activity.bookingFlightNo || "",
-          needHotel: activity.needHotel,
-          hotelCheckInCheckOut:
-            activity.hotelCheckIn && activity.hotelCheckOut
-              ? {
-                  checkIn: new Date(activity.hotelCheckIn),
-                  checkOut: new Date(activity.hotelCheckOut),
-                }
+        };
+
+        if (
+          activity.activityType === "PERJALANAN_DINAS" &&
+          activity.dailyActivities
+        ) {
+          formData.dailyActivities = activity.dailyActivities.map((daily) => ({
+            date: new Date(daily.date),
+            needHotel: daily.needHotel,
+            hotelCheckIn: daily.hotelCheckIn
+              ? new Date(daily.hotelCheckIn)
               : undefined,
-          hotelName: activity.hotelName || "",
-          hotelAddress: activity.hotelAddress || "",
-          subActivities: activity?.subActivities
-            ? activity.subActivities.map((sub) => ({
-                ...sub,
-                date: sub.date ? new Date(sub.date) : undefined,
-              }))
-            : [{ date: undefined, description: "" }],
-        });
+            hotelCheckOut: daily.hotelCheckOut
+              ? new Date(daily.hotelCheckOut)
+              : undefined,
+            hotelName: daily.hotelName || "",
+            hotelAddress: daily.hotelAddress || "",
+            activityItems: daily.activityItems.map((item) => ({
+              name: item.name,
+            })),
+          }));
+        }
+
+        form.reset(formData);
         setEmployeeName(activity.employee?.name || "");
         setBranchName(activity.branch?.name || "");
       } else if (selectedDate) {
@@ -277,7 +312,14 @@ export function ActivityFormDialog({
           activityType: "PROSPECT_MEETING",
           branchId: "",
           employeeId: "",
-          needHotel: false,
+          birthDate: null,
+          idCard: "",
+          departureDate: null,
+          transportationType: undefined,
+          transportationFrom: "",
+          destination: "",
+          bookingFlightNo: "",
+          dailyActivities: [],
         });
       }
     }
@@ -299,17 +341,16 @@ export function ActivityFormDialog({
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error("Failed to create activity");
-
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities"] });
-      toast.success("Activity created successfully!");
+      toast.success("Kegiatan berhasil dibuat!");
       onOpenChange(false);
       form.reset();
     },
     onError: () => {
-      toast.error("Failed to create activity");
+      toast.error("Gagal membuat kegiatan");
     },
   });
 
@@ -325,12 +366,12 @@ export function ActivityFormDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities"] });
-      toast.success("Activity updated successfully!");
+      toast.success("Kegiatan berhasil diperbarui!");
       onOpenChange(false);
       form.reset();
     },
     onError: () => {
-      toast.error("Failed to update activity");
+      toast.error("Gagal memperbarui kegiatan");
     },
   });
 
@@ -371,9 +412,12 @@ export function ActivityFormDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6 px-1"
+          >
             {/* Basic Information */}
-            <div className="space-y-4">
+            <div className="space-y-4 px-1">
               <h3 className="text-lg font-semibold">Informasi Dasar</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -436,7 +480,7 @@ export function ActivityFormDialog({
                                 </CommandEmpty>
                               )}
 
-                              {!isLoading &&
+                              {!isEmployeesLoading &&
                                 !isError &&
                                 employees.length === 0 && (
                                   <CommandEmpty>
@@ -612,9 +656,9 @@ export function ActivityFormDialog({
                                   ))}
 
                                   {/* Infinite scroll trigger */}
-                                  {hasNextPage && (
+                                  {hasBranchesNextPage && (
                                     <div ref={ref} className="p-4 text-center">
-                                      {isFetchingNextPage ? (
+                                      {isFetchingBranchesNextPage ? (
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
                                       ) : (
                                         <p className="text-xs text-muted-foreground">
@@ -695,45 +739,58 @@ export function ActivityFormDialog({
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Judul</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter activity title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Title and Description - Hidden for PERJALANAN_DINAS */}
+              {!showPerjalananDinasFields && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Judul</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Masukkan judul kegiatan"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deskripsi</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter activity description"
-                        className="min-h-[100px] resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Deskripsi</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Masukkan deskripsi kegiatan"
+                            className="min-h-[100px] resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </div>
-
-            {/* Perjalanan Dinas Fields */}
-            {showPerjalananDinasFields && (
-              <>
-                <div className="space-y-4">
+            <AnimatePresence initial={false}>
+              {showPerjalananDinasFields && (
+                <motion.div
+                  key="perjalanan-dinas-fields"
+                  initial={{ opacity: 0, y: -10, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -10, height: 0 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+                  className="overflow-hidden space-y-4 px-1"
+                  layout
+                >
                   <Separator />
-
                   <h3 className="text-lg font-semibold">
                     Informasi Perjalanan Dinas
                   </h3>
@@ -744,46 +801,18 @@ export function ActivityFormDialog({
                       name="birthDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col w-full">
-                          <FormLabel>Tanggal Lahir</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "pl-3 text-left font-normal w-full",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pilih tanggal</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                            >
-                              <Calendar
-                                mode="single"
-                                selected={
-                                  field.value
-                                    ? new Date(field.value)
-                                    : undefined
-                                }
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() ||
-                                  date < new Date("1900-01-01")
-                                }
-                                captionLayout="dropdown"
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <FormLabel>Tanggal Lahir *</FormLabel>
+                          <FormControl>
+                            <DatePicker
+                              selected={field.value!}
+                              onSelect={(date: Date) => {
+                                field.onChange(date);
+                              }}
+                              disabledDate={(date) =>
+                                date > new Date() || date < new Date(1900, 0, 1)
+                              }
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -794,7 +823,7 @@ export function ActivityFormDialog({
                       name="idCard"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>ID Card</FormLabel>
+                          <FormLabel>ID Card *</FormLabel>
                           <FormControl>
                             <Input placeholder="Masukkan ID card" {...field} />
                           </FormControl>
@@ -809,38 +838,18 @@ export function ActivityFormDialog({
                     name="departureDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col w-full">
-                        <FormLabel>Tanggal Keberangkatan</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "pl-3 text-left font-normal w-full cursor-pointer",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pilih tanggal</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date(new Date().setHours(0, 0, 0, 0))
-                              }
-                              captionLayout="dropdown"
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormLabel>Tanggal Keberangkatan *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            selected={field.value!}
+                            onSelect={(date: Date) => {
+                              field.onChange(date);
+                            }}
+                            disabledDate={(date) =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                            }
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -852,7 +861,7 @@ export function ActivityFormDialog({
                       name="transportationFrom"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Keberangkatan</FormLabel>
+                          <FormLabel>Keberangkatan *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Masukkan lokasi keberangkatan"
@@ -869,7 +878,7 @@ export function ActivityFormDialog({
                       name="destination"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Tujuan</FormLabel>
+                          <FormLabel>Tujuan *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Masukkan lokasi tujuan"
@@ -888,7 +897,7 @@ export function ActivityFormDialog({
                       name="transportationType"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Transportasi</FormLabel>
+                          <FormLabel>Transportasi *</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
@@ -917,7 +926,7 @@ export function ActivityFormDialog({
                       name="bookingFlightNo"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>No. Booking/Flight</FormLabel>
+                          <FormLabel>No. Booking/Flight *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Masukkan nomor booking atau flight"
@@ -930,264 +939,64 @@ export function ActivityFormDialog({
                     />
                   </div>
 
-                  <div className="space-y-4">
-                    <h4 className="text-md font-medium">
-                      Kegiatan Perjalanan Dinas
-                    </h4>
-
-                    {subActivitiesFields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className="grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-4 items-end"
+                  {/* Daily Activities Section */}
+                  <div className="space-y-4 pt-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-md font-medium">
+                        Kegiatan Harian Perjalanan Dinas
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          appendDailyActivity({
+                            date: undefined,
+                            needHotel: false,
+                            activityItems: [{ name: "" }],
+                          })
+                        }
+                        className="cursor-pointer"
                       >
-                        <FormField
-                          control={form.control}
-                          name={`subActivities.${index}.date`}
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col w-full">
-                              <FormLabel>Tanggal Kegiatan</FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant={"outline"}
-                                      className={cn(
-                                        "pl-3 text-left font-normal w-full cursor-pointer",
-                                        !field.value && "text-muted-foreground"
-                                      )}
-                                    >
-                                      {field.value ? (
-                                        format(field.value, "PPP")
-                                      ) : (
-                                        <span>Pilih tanggal</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  className="w-auto p-0"
-                                  align="start"
-                                >
-                                  <Calendar
-                                    mode="single"
-                                    selected={
-                                      field.value
-                                        ? new Date(field.value)
-                                        : undefined
-                                    }
-                                    onSelect={field.onChange}
-                                    disabled={(date) =>
-                                      date <
-                                      new Date(new Date().setHours(0, 0, 0, 0))
-                                    }
-                                    captionLayout="dropdown"
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name={`subActivities.${index}.description`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nama Kegiatan</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nama kegiatan" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Remove button */}
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => remove(index)}
-                          disabled={subActivitiesFields.length === 1}
-                          size="icon"
-                          className="cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        append({ date: undefined, description: "" })
-                      }
-                      className="cursor-pointer"
-                    >
-                      + Tambah Kegiatan Dinas
-                    </Button>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="needHotel"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 mb-5">
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            className="cursor-pointer"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Butuh Akomodasi Hotel?</FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Hotel Fields */}
-                  {watchNeedHotel && (
-                    <div className="space-y-4">
-                      <Separator />
-                      <h3 className="text-lg font-semibold">Informasi Hotel</h3>
-                      <FormField
-                        control={form.control}
-                        name="hotelCheckInCheckOut"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col w-full">
-                            <FormLabel>Check In & Check Out</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    id="date"
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full justify-between items-center flex font-normal cursor-pointer",
-                                      !field.value?.checkIn &&
-                                        "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value?.checkIn ? (
-                                      field.value?.checkOut ? (
-                                        <>
-                                          {format(
-                                            field.value?.checkIn,
-                                            "LLL dd, y"
-                                          )}{" "}
-                                          -{" "}
-                                          {format(
-                                            field.value?.checkOut,
-                                            "LLL dd, y"
-                                          )}
-                                        </>
-                                      ) : (
-                                        format(
-                                          field.value?.checkIn,
-                                          "LLL dd, y"
-                                        )
-                                      )
-                                    ) : (
-                                      <span>Pilih tanggal</span>
-                                    )}
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  mode="range"
-                                  selected={
-                                    field.value?.checkIn ||
-                                    field.value?.checkOut
-                                      ? {
-                                          from: field.value?.checkIn,
-                                          to: field.value?.checkOut,
-                                        }
-                                      : undefined
-                                  }
-                                  onSelect={(range) => {
-                                    field.onChange({
-                                      checkIn: range?.from,
-                                      checkOut: range?.to,
-                                    });
-                                  }}
-                                  disabled={(date) =>
-                                    date <
-                                    new Date(new Date().setHours(0, 0, 0, 0))
-                                  }
-                                  captionLayout="dropdown"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="hotelName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nama Hotel</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Masukkan nama hotel"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="hotelAddress"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alamat Hotel</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Masukkan alamat hotel"
-                                className="min-h-[80px] resize-none"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <Plus className="h-4 w-4 mr-1" />
+                        Tambah Hari
+                      </Button>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
+
+                    {dailyActivitiesFields.map((dailyField, dailyIndex) => (
+                      <DailyActivityCard
+                        key={dailyField.id}
+                        dailyIndex={dailyIndex}
+                        form={form}
+                        onRemove={() => removeDailyActivity(dailyIndex)}
+                        canRemove={dailyActivitiesFields.length > 1}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1" disabled={isLoading}>
-                {isLoading
-                  ? "Saving..."
-                  : isEditing
-                  ? "Update Activity"
-                  : "Create Activity"}
-              </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="flex-1"
+                className="flex-1 cursor-pointer"
                 disabled={isLoading}
               >
-                Cancel
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 cursor-pointer"
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? "Menyimpan..."
+                  : isEditing
+                  ? "Perbarui Kegiatan"
+                  : "Buat Kegiatan"}
               </Button>
             </div>
           </form>

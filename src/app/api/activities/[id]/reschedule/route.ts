@@ -4,10 +4,13 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const user = await getCurrentUser();
+
     if (!user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -18,11 +21,18 @@ export async function POST(
     // Get the original activity
     const originalActivity = await prisma.activity.findUnique({
       where: {
-        id: params.id,
+        id: id,
         createdBy: user.id!,
       },
       include: {
-        subActivities: true,
+        dailyActivities: {
+          include: {
+            activityItems: {
+              orderBy: { order: "asc" },
+            },
+          },
+          orderBy: { date: "asc" },
+        },
       },
     });
 
@@ -37,7 +47,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       // Update original activity to mark as rescheduled
       const updatedOriginal = await tx.activity.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           strikethrough: true,
           rescheduledTo: new Date(date),
@@ -47,7 +57,6 @@ export async function POST(
           user: true,
           branch: true,
           employee: true,
-          subActivities: true,
         },
       });
 
@@ -68,15 +77,11 @@ export async function POST(
           // Copy Perjalanan Dinas specific fields if applicable
           birthDate: originalActivity.birthDate,
           idCard: originalActivity.idCard,
+          departureDate: originalActivity.departureDate,
           transportationType: originalActivity.transportationType,
           transportationFrom: originalActivity.transportationFrom,
           destination: originalActivity.destination,
           bookingFlightNo: originalActivity.bookingFlightNo,
-          needHotel: originalActivity.needHotel,
-          hotelCheckIn: originalActivity.hotelCheckIn,
-          hotelCheckOut: originalActivity.hotelCheckOut,
-          hotelName: originalActivity.hotelName,
-          hotelAddress: originalActivity.hotelAddress,
         },
         include: {
           user: true,
@@ -85,15 +90,39 @@ export async function POST(
         },
       });
 
-      // Copy sub-activities if they exist
-      if (originalActivity.subActivities.length > 0) {
-        await tx.subActivity.createMany({
-          data: originalActivity.subActivities.map((sub) => ({
-            activityId: newActivity.id,
-            date: sub.date,
-            description: sub.description,
-          })),
-        });
+      // Copy daily activities and their items if they exist (PERJALANAN_DINAS)
+      if (
+        originalActivity.dailyActivities &&
+        originalActivity.dailyActivities.length > 0
+      ) {
+        for (const dailyActivity of originalActivity.dailyActivities) {
+          // Create new daily activity
+          const newDailyActivity = await tx.dailyActivity.create({
+            data: {
+              activityId: newActivity.id,
+              date: dailyActivity.date,
+              needHotel: dailyActivity.needHotel,
+              hotelCheckIn: dailyActivity.hotelCheckIn,
+              hotelCheckOut: dailyActivity.hotelCheckOut,
+              hotelName: dailyActivity.hotelName,
+              hotelAddress: dailyActivity.hotelAddress,
+            },
+          });
+
+          // Create activity items for this daily activity
+          if (
+            dailyActivity.activityItems &&
+            dailyActivity.activityItems.length > 0
+          ) {
+            await tx.activityItem.createMany({
+              data: dailyActivity.activityItems.map((item) => ({
+                dailyActivityId: newDailyActivity.id,
+                name: item.name,
+                order: item.order,
+              })),
+            });
+          }
+        }
       }
 
       return { updatedOriginal, newActivity };
