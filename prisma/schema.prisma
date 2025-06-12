@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url  	    = env("DATABASE_URL")
+}
+
+ 
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String   @unique
+  image         String?
+  password      String
+
+  createdActivities    Activity[]
+ 
+  @@map("users")
+}
+
+model Employee {
+  id        String     @id @default(cuid())
+  name      String
+  email     String?    @unique
+  phone     String?
+  address   String?
+  position  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  activities Activity[]
+}
+
+model Branch {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  activities Activity[]
+}
+
+enum ActivityType {
+  PROSPECT_MEETING
+  ESCORT_TEAM
+  PERJALANAN_DINAS
+  TAMU_UNDANGAN
+  RETENTION_TEAM
+}
+
+enum TransportationType {
+  FLIGHT
+  FERRY
+  TRAIN
+}
+
+model Activity {
+  id                            String       @id @default(cuid())
+  title                         String?      // Optional for PERJALANAN_DINAS
+  description                   String?      // Optional for PERJALANAN_DINAS
+  date                          DateTime
+  time                          String
+  activityType                  ActivityType
+  strikethrough                 Boolean      @default(false)
+  rescheduledFrom               DateTime?
+  rescheduledTo                 DateTime?
+  rescheduledTimeFrom           String?
+  rescheduledTimeTo             String?
+  createdAt                     DateTime     @default(now())
+  updatedAt                     DateTime     @updatedAt
+
+  // Perjalanan Dinas specific fields
+  idCard                        String?
+  birthDate                     DateTime?
+  departureDate                 DateTime?
+  transportationFrom            String?
+  destination                   String?
+  transportationType            TransportationType?
+  bookingFlightNo               String?
+  
+  createdBy                     String
+  user           User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  branchId                      String
+  branch         Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  employeeId                    String
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // For PERJALANAN_DINAS: daily activities with hotel info
+  dailyActivities  DailyActivity[]
+
+  @@index([date])
+  @@index([createdBy])
+  @@index([branchId])
+  @@index([activityType])
+}
+
+// Model for daily activities in PERJALANAN_DINAS
+model DailyActivity {
+  id          String   @id @default(cuid())
+  date        DateTime
+  needHotel   Boolean  @default(false)
+  
+  // Hotel information (optional, only if needHotel is true)
+  hotelCheckIn     DateTime?
+  hotelCheckOut    DateTime?
+  hotelName        String?
+  hotelAddress     String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activityId  String
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  // Multiple activity items per day
+  activityItems ActivityItem[]
+
+  @@index([activityId])
+  @@index([date])
+}
+
+// Individual activity items within a daily activity
+model ActivityItem {
+  id          String   @id @default(cuid())
+  name        String   // Activity name/description
+  order       Int      @default(0) // For ordering activities within a day
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dailyActivityId String
+  dailyActivity   DailyActivity @relation(fields: [dailyActivityId], references: [id], onDelete: Cascade)
+
+  @@index([dailyActivityId])
+}
