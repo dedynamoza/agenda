@@ -22,6 +22,9 @@ export interface ActivityRes {
   transportationFrom?: string;
   destination?: string;
   bookingFlightNo?: string;
+  departureFrom?: string;
+  arrivalTo?: string;
+  transportationName?: string;
 
   // For PERJALANAN_DINAS only
   dailyActivities?: Array<{

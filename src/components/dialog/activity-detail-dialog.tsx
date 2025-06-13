@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { ExportDinasButton } from "@/components/export-dinas-button";
+import { ActivityDialog } from "@/components/dialog/activity-dialog";
 import { RescheduleDialog } from "@/components/dialog/reschedule-dialog";
-import { ActivityFormDialog } from "@/components/dialog/add-activity-dialog";
 
 import {
   cn,
@@ -33,13 +34,16 @@ import {
   ArrowRight,
   Ticket,
   GitBranch,
-  MapPinIcon as MapPinCheck,
-  TicketCheck,
   DoorOpen,
   DoorClosed,
   CalendarDays,
   Hotel,
   ListChecks,
+  MapPinCheckInside,
+  BookUser,
+  ClipboardIcon,
+  BookmarkCheck,
+  SquareArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -137,6 +141,11 @@ export function ActivityDetailDialog({
               <Calendar className="h-5 w-5 text-blue-600" />
               Detail Kegiatan
             </DialogTitle>
+            <div className="flex justify-end">
+              {activity.activityType === "PERJALANAN_DINAS" && (
+                <ExportDinasButton activityId={activity.id} />
+              )}
+            </div>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -280,7 +289,7 @@ export function ActivityDetailDialog({
                         isRescheduled ? "line-through text-slate-400" : ""
                       }
                     >
-                      {format(new Date(activity.date), "PPP")}
+                      {format(new Date(activity.date), "PPP", { locale: id })}
                     </span>
                   </div>
 
@@ -315,7 +324,9 @@ export function ActivityDetailDialog({
                         <Calendar className="h-4 w-4 text-slate-500" />
                         <span className="font-medium">Tanggal Lahir:</span>
                         <span className={isRescheduled ? "line-through" : ""}>
-                          {format(new Date(activity.birthDate), "PP")}
+                          {format(new Date(activity.birthDate), "PPP", {
+                            locale: id,
+                          })}
                         </span>
                       </div>
                     )}
@@ -330,6 +341,26 @@ export function ActivityDetailDialog({
                       </div>
                     )}
 
+                    {activity.transportationFrom && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium">Kota Keberangkatan:</span>
+                        <span className={isRescheduled ? "line-through" : ""}>
+                          {activity.transportationFrom}
+                        </span>
+                      </div>
+                    )}
+
+                    {activity.destination && (
+                      <div className="flex items-center gap-2">
+                        <MapPinCheckInside className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium">Kota Tujuan:</span>
+                        <span className={isRescheduled ? "line-through" : ""}>
+                          {activity.destination}
+                        </span>
+                      </div>
+                    )}
+
                     {activity.departureDate && (
                       <div className="flex items-center gap-2">
                         <CalendarDays className="h-4 w-4 text-slate-500" />
@@ -337,7 +368,19 @@ export function ActivityDetailDialog({
                           Tanggal Keberangkatan:
                         </span>
                         <span className={isRescheduled ? "line-through" : ""}>
-                          {format(new Date(activity.departureDate), "PP")}
+                          {format(new Date(activity.departureDate), "PPP", {
+                            locale: id,
+                          })}
+                        </span>
+                      </div>
+                    )}
+
+                    {activity.transportationFrom && (
+                      <div className="flex items-center gap-2">
+                        <ClipboardIcon className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium">Nama Transportasi:</span>
+                        <span className={isRescheduled ? "line-through" : ""}>
+                          {activity.transportationName}
                         </span>
                       </div>
                     )}
@@ -356,30 +399,30 @@ export function ActivityDetailDialog({
 
                     {activity.bookingFlightNo && (
                       <div className="flex items-center gap-2">
-                        <TicketCheck className="h-4 w-4 text-slate-500" />
-                        <span className="font-medium">No. Booking/Flight:</span>
+                        <BookUser className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium">Kode Booking:</span>
                         <span className={isRescheduled ? "line-through" : ""}>
                           {activity.bookingFlightNo}
                         </span>
                       </div>
                     )}
 
-                    {activity.transportationFrom && (
+                    {activity.transportationType && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-slate-500" />
+                        <SquareArrowRight className="h-4 w-4 text-slate-500" />
                         <span className="font-medium">Keberangkatan:</span>
                         <span className={isRescheduled ? "line-through" : ""}>
-                          {activity.transportationFrom}
+                          {activity.departureFrom}
                         </span>
                       </div>
                     )}
 
-                    {activity.destination && (
+                    {activity.bookingFlightNo && (
                       <div className="flex items-center gap-2">
-                        <MapPinCheck className="h-4 w-4 text-slate-500" />
+                        <BookmarkCheck className="h-4 w-4 text-slate-500" />
                         <span className="font-medium">Tujuan:</span>
                         <span className={isRescheduled ? "line-through" : ""}>
-                          {activity.destination}
+                          {activity.arrivalTo}
                         </span>
                       </div>
                     )}
@@ -585,7 +628,7 @@ export function ActivityDetailDialog({
         activityTitle={activity?.title}
       />
 
-      <ActivityFormDialog
+      <ActivityDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         selectedDate={activity ? new Date(activity.date) : undefined}

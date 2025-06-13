@@ -100,7 +100,10 @@ export function RescheduleDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to reschedule activity");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to reschedule activity");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -110,8 +113,13 @@ export function RescheduleDialog({
       form.reset();
     },
     onError: (error) => {
-      console.error("Reschedule error:", error);
-      toast.error("Gagal menjadwal ulang kegiatan");
+      if (
+        error.message === "Karyawan sudah memiliki kegiatan di waktu yang sama"
+      ) {
+        toast.error("Karyawan sudah memiliki kegiatan di waktu ini");
+      } else {
+        toast.error("Gagal reschedule kegiatan");
+      }
     },
   });
 

@@ -18,6 +18,22 @@ export async function POST(
     const body = await request.json();
     const { date, time } = body;
 
+    // Validate if the employee already has an activity at the given date and time
+    const conflictingActivity = await prisma.activity.findFirst({
+      where: {
+        employeeId: user.id!,
+        date: new Date(date),
+        time: time,
+      },
+    });
+
+    if (conflictingActivity) {
+      return NextResponse.json(
+        { error: "Karyawan sudah memiliki kegiatan di waktu yang sama" },
+        { status: 400 }
+      );
+    }
+
     // Get the original activity
     const originalActivity = await prisma.activity.findUnique({
       where: {
@@ -82,6 +98,9 @@ export async function POST(
           transportationFrom: originalActivity.transportationFrom,
           destination: originalActivity.destination,
           bookingFlightNo: originalActivity.bookingFlightNo,
+          departureFrom: originalActivity.departureFrom,
+          arrivalTo: originalActivity.arrivalTo,
+          transportationName: originalActivity.transportationName,
         },
         include: {
           user: true,

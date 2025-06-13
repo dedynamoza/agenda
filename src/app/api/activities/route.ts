@@ -20,6 +20,9 @@ interface ActivityData {
   transportationFrom?: string;
   destination?: string;
   bookingFlightNo?: string;
+  departureFrom?: string;
+  arrivalTo?: string;
+  transportationName?: string;
 }
 
 interface DailyActivityData {
@@ -171,6 +174,9 @@ export async function POST(request: NextRequest) {
       destination,
       bookingFlightNo,
       dailyActivities,
+      departureFrom,
+      arrivalTo,
+      transportationName,
     } = body;
 
     const activityData: ActivityData = {
@@ -181,6 +187,22 @@ export async function POST(request: NextRequest) {
       employeeId,
       createdBy: user.id as string,
     };
+
+    // Check if the employee already has a schedule at the same date and time
+    const existingActivity = await prisma.activity.findFirst({
+      where: {
+        employeeId,
+        date: new Date(date),
+        time,
+      },
+    });
+
+    if (existingActivity) {
+      return NextResponse.json(
+        { error: "Karyawan sudah memiliki kegiatan di waktu yang sama" },
+        { status: 400 }
+      );
+    }
 
     // Add title and description for non-PERJALANAN_DINAS activities
     if (activityType !== "PERJALANAN_DINAS") {
@@ -198,6 +220,10 @@ export async function POST(request: NextRequest) {
         activityData.transportationFrom = transportationFrom;
       if (destination) activityData.destination = destination;
       if (bookingFlightNo) activityData.bookingFlightNo = bookingFlightNo;
+      if (departureFrom) activityData.departureFrom = departureFrom;
+      if (arrivalTo) activityData.arrivalTo = arrivalTo;
+      if (transportationName)
+        activityData.transportationName = transportationName;
     }
 
     const result = await prisma.$transaction(async (tx) => {

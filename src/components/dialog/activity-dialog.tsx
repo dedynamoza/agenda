@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,6 +41,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { DatePicker } from "@/components/ui/date-picker";
+import { DailyActivityCard } from "@/components/dialog/daily-activity-card";
 
 import {
   formatDate,
@@ -71,22 +74,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useInView } from "react-intersection-observer";
 import { useFieldArray, useForm } from "react-hook-form";
 import { AnimatePresence, motion } from "framer-motion";
-import { DailyActivityCard } from "./daily-activity-card";
-import { DatePicker } from "../ui/date-picker";
 
-interface ActivityFormDialogProps {
+interface ActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedDate?: Date;
+  selectedTime?: string;
   activity?: ActivityRes;
 }
 
-export function ActivityFormDialog({
+export function ActivityDialog({
   open,
   onOpenChange,
   selectedDate,
+  selectedTime,
   activity,
-}: ActivityFormDialogProps) {
+}: ActivityDialogProps) {
   const isEditing = !!activity;
   const { ref, inView } = useInView();
   const queryClient = useQueryClient();
@@ -110,7 +113,7 @@ export function ActivityFormDialog({
       title: "",
       description: "",
       date: selectedDate ? formatDate(selectedDate) : "",
-      time: "",
+      time: selectedTime || "",
       activityType: "PROSPECT_MEETING",
       branchId: "",
       employeeId: "",
@@ -121,6 +124,9 @@ export function ActivityFormDialog({
       transportationFrom: "",
       destination: "",
       bookingFlightNo: "",
+      transportationName: "",
+      departureFrom: "",
+      arrivalTo: "",
       dailyActivities: [],
     },
   });
@@ -136,6 +142,7 @@ export function ActivityFormDialog({
   });
 
   const watchActivityType = form.watch("activityType");
+  const watchTransportationType = form.watch("transportationType");
 
   // Get branches data
   const {
@@ -238,6 +245,9 @@ export function ActivityFormDialog({
       form.setValue("transportationFrom", "");
       form.setValue("destination", "");
       form.setValue("bookingFlightNo", "");
+      form.setValue("transportationName", "");
+      form.setValue("departureFrom", "");
+      form.setValue("arrivalTo", "");
       form.setValue("dailyActivities", []);
     } else if (isPerjalananDinas && dailyActivitiesFields.length === 0) {
       appendDailyActivity({
@@ -277,6 +287,9 @@ export function ActivityFormDialog({
           transportationFrom: activity.transportationFrom || "",
           destination: activity.destination || "",
           bookingFlightNo: activity.bookingFlightNo || "",
+          transportationName: activity.transportationName || "",
+          departureFrom: activity.departureFrom || "",
+          arrivalTo: activity.arrivalTo || "",
         };
 
         if (
@@ -308,7 +321,7 @@ export function ActivityFormDialog({
           title: "",
           description: "",
           date: formatDate(selectedDate),
-          time: "",
+          time: selectedTime || "",
           activityType: "PROSPECT_MEETING",
           branchId: "",
           employeeId: "",
@@ -319,11 +332,14 @@ export function ActivityFormDialog({
           transportationFrom: "",
           destination: "",
           bookingFlightNo: "",
+          transportationName: "",
+          departureFrom: "",
+          arrivalTo: "",
           dailyActivities: [],
         });
       }
     }
-  }, [open, activity, selectedDate, form]);
+  }, [open, activity, selectedDate, selectedTime, form]);
 
   const handleSearchNameChange = useCallback((value: string) => {
     setSearchNameQuery(value);
@@ -340,7 +356,10 @@ export function ActivityFormDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create activity");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create activity");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -349,8 +368,14 @@ export function ActivityFormDialog({
       onOpenChange(false);
       form.reset();
     },
-    onError: () => {
-      toast.error("Gagal membuat kegiatan");
+    onError: (error) => {
+      if (
+        error.message === "Karyawan sudah memiliki kegiatan di waktu yang sama"
+      ) {
+        toast.error("Karyawan sudah memiliki kegiatan di waktu ini");
+      } else {
+        toast.error("Gagal membuat kegiatan");
+      }
     },
   });
 
@@ -361,7 +386,10 @@ export function ActivityFormDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to update activity");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update activity");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -370,8 +398,14 @@ export function ActivityFormDialog({
       onOpenChange(false);
       form.reset();
     },
-    onError: () => {
-      toast.error("Gagal memperbarui kegiatan");
+    onError: (error) => {
+      if (
+        error.message === "Karyawan sudah memiliki kegiatan di waktu yang sama"
+      ) {
+        toast.error("Karyawan sudah memiliki kegiatan di waktu ini");
+      } else {
+        toast.error("Gagal memperbarui kegiatan");
+      }
     },
   });
 
@@ -398,17 +432,24 @@ export function ActivityFormDialog({
           <DialogTitle className="flex items-center gap-2 text-xl">
             {isEditing ? <>Edit Kegiatan</> : <>Tambah Kegiatan Baru</>}
           </DialogTitle>
-          {selectedDate && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground font-bold">
-              <CalendarIcon className="h-4 w-4" />
-              {selectedDate &&
-                selectedDate.toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-            </div>
-          )}
+          <div className="flex items-center">
+            {selectedDate && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-bold">
+                <CalendarIcon className="h-4 w-4" />
+                {selectedDate &&
+                  selectedDate.toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+              </div>
+            )}
+            {selectedTime && (
+              <span className="ml-1 text-sm text-muted-foreground font-bold">
+                : {selectedTime}
+              </span>
+            )}
+          </div>
         </DialogHeader>
 
         <Form {...form}>
@@ -861,10 +902,10 @@ export function ActivityFormDialog({
                       name="transportationFrom"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Keberangkatan *</FormLabel>
+                          <FormLabel>Kota Keberangkatan *</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Masukkan lokasi keberangkatan"
+                              placeholder="Masukkan kota keberangkatan"
                               {...field}
                             />
                           </FormControl>
@@ -878,10 +919,10 @@ export function ActivityFormDialog({
                       name="destination"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Tujuan *</FormLabel>
+                          <FormLabel>Kota Tujuan *</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Masukkan lokasi tujuan"
+                              placeholder="Masukkan kota tujuan"
                               {...field}
                             />
                           </FormControl>
@@ -926,13 +967,96 @@ export function ActivityFormDialog({
                       name="bookingFlightNo"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>No. Booking/Flight *</FormLabel>
+                          <FormLabel>Kode Booking *</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Masukkan nomor booking atau flight"
+                              placeholder="Masukkan kode booking"
                               {...field}
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="transportationName"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormLabel>Nama Transportasi *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Contoh: Lion Air JT-844"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex items-center gap-4 w-full">
+                    <FormField
+                      control={form.control}
+                      name="departureFrom"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormLabel>Keberangkatan *</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={
+                                watchTransportationType === "FLIGHT"
+                                  ? "Nama Bandara Keberangkatan dan Waktu"
+                                  : watchTransportationType === "FERRY"
+                                  ? "Nama Pelabuhan Keberangkatan dan Waktu"
+                                  : watchTransportationType === "TRAIN"
+                                  ? "Nama Stasiun Keberangkatan dan Waktu"
+                                  : watchTransportationType === "BUS"
+                                  ? "Nama Terminal Keberangkatan dan Waktu"
+                                  : watchTransportationType === "CAR"
+                                  ? "Nama Lokasi Keberangkatan dan Waktu"
+                                  : "Masukkan lokasi keberangkatan"
+                              }
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Contoh: Ngurah Rai Airport (DPS) 14:35
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="arrivalTo"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormLabel>Tujuan *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder={
+                                watchTransportationType === "FLIGHT"
+                                  ? "Nama Bandara Tujuan dan Waktu"
+                                  : watchTransportationType === "FERRY"
+                                  ? "Nama Pelabuhan Tujuan dan Waktu"
+                                  : watchTransportationType === "TRAIN"
+                                  ? "Nama Stasiun Tujuan dan Waktu"
+                                  : watchTransportationType === "BUS"
+                                  ? "Nama Terminal Tujuan dan Waktu"
+                                  : watchTransportationType === "CAR"
+                                  ? "Nama Lokasi Tujuan dan Waktu"
+                                  : "Masukkan lokasi tujuan"
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Contoh: Syamsuddin Noor (BJM) 08:35
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

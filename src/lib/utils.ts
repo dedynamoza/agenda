@@ -29,6 +29,35 @@ export function getIndonesiaDate(): Date {
 }
 
 /**
+ * Gets the week number for a specific date in a month
+ * @param year The year
+ * @param month The month (0-11)
+ * @param date The date of the month
+ * @returns The week number (1-based)
+ */
+export function getWeekNumberForDate(
+  year: number,
+  month: number,
+  date: number
+): number {
+  const targetDate = new Date(year, month, date);
+  const firstDayOfMonth = new Date(year, month, 1);
+  const dayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday, 1 for Monday, etc.
+
+  // Calculate the date of the first day of the first week
+  const firstDayOfFirstWeek = new Date(year, month, 1 - dayOfWeek);
+
+  // Calculate days between target date and first day of first week
+  const daysDiff = Math.floor(
+    (targetDate.getTime() - firstDayOfFirstWeek.getTime()) /
+      (24 * 60 * 60 * 1000)
+  );
+
+  // Calculate week number (add 1 because weeks are 1-indexed)
+  return Math.floor(daysDiff / 7) + 1;
+}
+
+/**
  * Format date as YYYY-MM-DD string
  */
 export function formatDate(date: Date): string {
@@ -222,6 +251,8 @@ export const TRANSPORTATION_TYPES = [
   { value: "FLIGHT", label: "Flight" },
   { value: "FERRY", label: "Ferry" },
   { value: "TRAIN", label: "Train" },
+  { value: "BUS", label: "Bus" },
+  { value: "CAR", label: "Car" },
 ];
 
 export function getActivityTypeLabel(type: string) {

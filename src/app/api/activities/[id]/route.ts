@@ -19,6 +19,9 @@ interface ActivityData {
   transportationFrom?: string;
   destination?: string;
   bookingFlightNo?: string;
+  departureFrom?: string;
+  arrivalTo?: string;
+  transportationName?: string;
 }
 
 export async function GET(
@@ -100,6 +103,9 @@ export async function PUT(
       transportationFrom,
       destination,
       bookingFlightNo,
+      departureFrom,
+      arrivalTo,
+      transportationName,
       dailyActivities,
     } = body;
 
@@ -125,6 +131,25 @@ export async function PUT(
       );
     }
 
+    // Validate if the employee already has an activity at the given date and time
+    const conflictingActivity = await prisma.activity.findFirst({
+      where: {
+        employeeId: employeeId,
+        date: new Date(date),
+        time: time,
+        id: {
+          not: id, // Exclude the current activity being edited
+        },
+      },
+    });
+
+    if (conflictingActivity) {
+      return NextResponse.json(
+        { error: "Karyawan sudah memiliki kegiatan di waktu yang sama" },
+        { status: 400 }
+      );
+    }
+
     const activityData: ActivityData = {
       date: new Date(date),
       time,
@@ -145,6 +170,9 @@ export async function PUT(
       activityData.transportationFrom = "";
       activityData.destination = "";
       activityData.bookingFlightNo = "";
+      activityData.departureFrom = "";
+      activityData.arrivalTo = "";
+      activityData.transportationName = "";
     } else {
       // Add Perjalanan Dinas specific fields if activity type is PERJALANAN_DINAS
       if (birthDate) activityData.birthDate = new Date(birthDate);
@@ -157,6 +185,10 @@ export async function PUT(
         activityData.transportationFrom = transportationFrom;
       if (destination) activityData.destination = destination;
       if (bookingFlightNo) activityData.bookingFlightNo = bookingFlightNo;
+      if (departureFrom) activityData.departureFrom = departureFrom;
+      if (arrivalTo) activityData.arrivalTo = arrivalTo;
+      if (transportationName)
+        activityData.transportationName = transportationName;
     }
 
     const result = await prisma.$transaction(async (tx) => {

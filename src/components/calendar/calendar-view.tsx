@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { ActivityFormDialog } from "@/components/dialog/add-activity-dialog";
+import { ActivityDialog } from "@/components/dialog/activity-dialog";
 import { ActivityDetailDialog } from "@/components/dialog/activity-detail-dialog";
 
 import {
@@ -34,8 +34,6 @@ import {
   getIndonesiaDateInfo,
   cn,
 } from "@/lib/utils";
-import type { ActivityRes } from "@/types/activity";
-import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   Grid3X3,
@@ -46,31 +44,18 @@ import {
   Users,
   Briefcase,
 } from "lucide-react";
+import { DAYS, MONTHS } from "@/lib/constants";
+import { useQuery } from "@tanstack/react-query";
+import type { ActivityRes } from "@/types/activity";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 
-interface ModernCalendarViewProps {
+interface CalendarViewProps {
   currentYear: number;
   currentMonth: number;
   onMonthChange: (month: number, year?: number) => void;
   viewMode: "calendar" | "week";
   onViewModeChange: (mode: "calendar" | "week") => void;
 }
-
-const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const MONTHS = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
 
 const ACTIVITY_COLORS = {
   PROSPECT_MEETING: "bg-blue-500",
@@ -88,13 +73,13 @@ const ACTIVITY_ICONS = {
   RETENTION_TEAM: Users,
 };
 
-export function ModernCalendarView({
+export function CalendarView({
   currentYear,
   currentMonth,
   onMonthChange,
   viewMode,
   onViewModeChange,
-}: ModernCalendarViewProps) {
+}: CalendarViewProps) {
   const { selectedEmployee } = useEmployeeFilter();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityRes | null>(
@@ -177,7 +162,6 @@ export function ModernCalendarView({
     (date: Date, event: React.MouseEvent) => {
       event.stopPropagation();
 
-      // Don't allow adding activities to past dates or dates outside current month
       if (date.getMonth() !== currentMonth || isPastDateObject(date)) {
         return;
       }
@@ -198,7 +182,6 @@ export function ModernCalendarView({
   );
 
   const handleTodayClick = useCallback(() => {
-    // Get current date in Indonesia timezone
     const indonesiaDateInfo = getIndonesiaDateInfo();
     onMonthChange(indonesiaDateInfo.month, indonesiaDateInfo.year);
   }, [onMonthChange]);
@@ -240,7 +223,7 @@ export function ModernCalendarView({
 
   return (
     <div className="w-full space-y-4 md:space-y-2">
-      {/* Modern Calendar Header - Mobile Optimized */}
+      {/* Modern Calendar Header - Mobile */}
       <div className="flex items-center justify-between">
         {/* Left Section - Navigation Controls */}
         <div className="flex items-center gap-2">
@@ -344,7 +327,7 @@ export function ModernCalendarView({
         </DropdownMenu>
       </div>
 
-      {/* Calendar Grid - Mobile Optimized */}
+      {/* Calendar Grid - Mobile */}
       <Card className="border-0 shadow-lg overflow-hidden py-0 rounded-lg">
         <CardContent className="p-0">
           <div className="bg-white">
@@ -379,7 +362,7 @@ export function ModernCalendarView({
                   <div
                     key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
                     className={`
-                      min-h-[60px] sm:min-h-[70px] lg:min-h-[75px] border-r border-b border-slate-200 p-1 sm:p-1.5 transition-all duration-200
+                      min-h-[60px] sm:min-h-[70px] lg:min-h-[83px] border-r border-b border-slate-200 p-1 sm:p-1.5 transition-all duration-200
                       ${!isCurrentMonthDate ? "bg-slate-100/50" : "bg-white"}
                       ${
                         isSundayDate && isCurrentMonthDate ? "bg-red-50/30" : ""
@@ -410,6 +393,11 @@ export function ModernCalendarView({
                               : "text-slate-700"
                           }
                           ${
+                            !isCurrentMonthDate && isSundayDate
+                              ? "!text-red-500"
+                              : ""
+                          }
+                          ${
                             isTodayDateValue
                               ? "bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold"
                               : ""
@@ -418,7 +406,7 @@ export function ModernCalendarView({
                             isSundayDate &&
                             isCurrentMonthDate &&
                             !isTodayDateValue
-                              ? "text-red-600 font-bold"
+                              ? "!text-red-600 font-bold"
                               : ""
                           }
                           ${
@@ -613,8 +601,7 @@ export function ModernCalendarView({
         </CardContent>
       </Card>
 
-      {/* Dialogs */}
-      <ActivityFormDialog
+      <ActivityDialog
         open={showActivityDialog}
         onOpenChange={setShowActivityDialog}
         selectedDate={selectedDate!}

@@ -60,6 +60,8 @@ enum TransportationType {
   FLIGHT
   FERRY
   TRAIN
+  BUS
+  CAR
 }
 
 model Activity {
@@ -73,7 +75,7 @@ model Activity {
   rescheduledFrom               DateTime?
   rescheduledTo                 DateTime?
   rescheduledTimeFrom           String?
-  rescheduledTimeTo             String?
+  rescheduledTimeTo             String?     
   createdAt                     DateTime     @default(now())
   updatedAt                     DateTime     @updatedAt
 
@@ -83,6 +85,10 @@ model Activity {
   departureDate                 DateTime?
   transportationFrom            String?
   destination                   String?
+  departureFrom                 String?      
+  arrivalTo                     String? 
+  transportationName            String?
+
   transportationType            TransportationType?
   bookingFlightNo               String?
   

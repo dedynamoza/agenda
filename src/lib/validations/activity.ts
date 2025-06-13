@@ -84,6 +84,9 @@ export const activitySchema = z
     destination: z.string().optional(),
     transportationType: z.enum(["FLIGHT", "FERRY", "TRAIN"]).optional(),
     bookingFlightNo: z.string().optional(),
+    departureFrom: z.string().optional(),
+    arrivalTo: z.string().optional(),
+    transportationName: z.string().optional(),
 
     // Daily activities for PERJALANAN_DINAS
     dailyActivities: z.array(dailyActivitySchema).optional(),
@@ -127,6 +130,22 @@ export const activitySchema = z
         });
       }
 
+      if (!data.departureFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Lokasi keberangkatan harus diisi untuk perjalanan dinas",
+          path: ["departureFrom"],
+        });
+      }
+
+      if (!data.arrivalTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Lokasi kedatangan harus diisi untuk perjalanan dinas",
+          path: ["arrivalTo"],
+        });
+      }
+
       if (!data.transportationFrom) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -148,6 +167,14 @@ export const activitySchema = z
           code: z.ZodIssueCode.custom,
           message: "Jenis transportasi harus dipilih untuk perjalanan dinas",
           path: ["transportationType"],
+        });
+      }
+
+      if (!data.transportationName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nama transportasi harus diisi untuk perjalanan dinas",
+          path: ["transportationName"],
         });
       }
     } else {

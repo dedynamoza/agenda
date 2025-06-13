@@ -1,41 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-// import { WeekView } from "@/components/calendar/week-view";
-import { ModernCalendarView } from "./calendar-view";
+import { WeekView } from "./week-view";
+import { CalendarView } from "./calendar-view";
 
-import { getWeekOfMonth } from "@/lib/utils";
-import { useEmployeeFilter } from "@/hooks/use-employee-filter";
+import { getIndonesiaDateInfo } from "@/lib/utils";
 
 export function CalendarSection() {
-  const { selectedEmployee } = useEmployeeFilter();
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"calendar" | "week">("calendar");
-  const [currentWeek, setCurrentWeek] = useState(getWeekOfMonth(new Date()));
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentWeek, setCurrentWeek] = useState(1);
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  // To find which week contains a specific date
+  const findWeekContainingDate = useCallback(
+    (year: number, month: number, date: number) => {
+      const firstDay = new Date(year, month, 1);
+      const firstDayOfWeek = firstDay.getDay();
 
-  const handleMonthChange = (month: number, year?: number) => {
-    setCurrentDate(new Date(year || currentYear, month, 1));
-    setCurrentWeek(1);
-  };
+      const firstDateOfCalendar = new Date(year, month, 1 - firstDayOfWeek);
 
-  const handleViewModeChange = (mode: "calendar" | "week") => {
-    setViewMode(mode);
-    if (mode === "week") {
-      setCurrentWeek(getWeekOfMonth(new Date()));
-    }
-  };
+      const lastDay = new Date(year, month + 1, 0);
+      const totalDays = lastDay.getDate();
+      const totalWeeks = Math.ceil((totalDays + firstDayOfWeek) / 7);
+
+      const weeks = [];
+      const currentDate = new Date(firstDateOfCalendar);
+
+      for (let week = 0; week < totalWeeks; week++) {
+        const weekDays = [];
+        for (let day = 0; day < 7; day++) {
+          weekDays.push(new Date(currentDate));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        weeks.push(weekDays);
+      }
+
+      // To find which week contains the target date
+      const targetDate = new Date(year, month, date);
+      for (let weekIndex = 0; weekIndex < weeks.length; weekIndex++) {
+        const week = weeks[weekIndex];
+        for (const day of week) {
+          if (
+            day.getDate() === targetDate.getDate() &&
+            day.getMonth() === targetDate.getMonth() &&
+            day.getFullYear() === targetDate.getFullYear()
+          ) {
+            return weekIndex + 1;
+          }
+        }
+      }
+
+      return 1;
+    },
+    []
+  );
+
+  useEffect(() => {
+    const indonesiaDateInfo = getIndonesiaDateInfo();
+    setCurrentYear(indonesiaDateInfo.year);
+    setCurrentMonth(indonesiaDateInfo.month);
+
+    // Calculate which week contains today
+    const weekNumber = findWeekContainingDate(
+      indonesiaDateInfo.year,
+      indonesiaDateInfo.month,
+      indonesiaDateInfo.date
+    );
+    setCurrentWeek(weekNumber);
+  }, [findWeekContainingDate]);
+
+  // Handle view mode change
+  const handleViewModeChange = useCallback(
+    (mode: "calendar" | "week") => {
+      if (mode === "week" && viewMode === "calendar") {
+        const today = new Date();
+        if (
+          today.getFullYear() === currentYear &&
+          today.getMonth() === currentMonth
+        ) {
+          const weekNumber = findWeekContainingDate(
+            currentYear,
+            currentMonth,
+            today.getDate()
+          );
+          setCurrentWeek(weekNumber);
+        }
+      }
+      setViewMode(mode);
+    },
+    [viewMode, currentYear, currentMonth, findWeekContainingDate]
+  );
+
+  // Handle month change
+  const handleMonthChange = useCallback(
+    (month: number, year?: number) => {
+      setCurrentMonth(month);
+      if (year !== undefined) {
+        setCurrentYear(year);
+      }
+
+      if (viewMode === "week") {
+        const today = new Date();
+        if (
+          today.getFullYear() === (year || currentYear) &&
+          today.getMonth() === month
+        ) {
+          const weekNumber = findWeekContainingDate(
+            year || currentYear,
+            month,
+            today.getDate()
+          );
+          setCurrentWeek(weekNumber);
+        } else {
+          setCurrentWeek(1);
+        }
+      }
+    },
+    [viewMode, currentYear, findWeekContainingDate]
+  );
 
   return (
     <div>
       <div className="space-y-8">
-        {/* Calendar Container */}
         <div className="p-4 md:p-6 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20">
           {viewMode === "calendar" ? (
-            <ModernCalendarView
+            <CalendarView
               currentYear={currentYear}
               currentMonth={currentMonth}
               onMonthChange={handleMonthChange}
@@ -43,14 +134,15 @@ export function CalendarSection() {
               onViewModeChange={handleViewModeChange}
             />
           ) : (
-            // <WeekView
-            //   currentYear={currentYear}
-            //   currentMonth={currentMonth}
-            //   currentWeek={currentWeek}
-            //   onWeekChange={setCurrentWeek}
-            //   onMonthChange={handleMonthChange}
-            // />
-            <div>week</div>
+            <WeekView
+              viewMode="week"
+              currentYear={currentYear}
+              currentMonth={currentMonth}
+              currentWeek={currentWeek}
+              onWeekChange={setCurrentWeek}
+              onMonthChange={handleMonthChange}
+              onViewModeChange={handleViewModeChange}
+            />
           )}
         </div>
       </div>
