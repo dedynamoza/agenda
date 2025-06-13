@@ -112,7 +112,6 @@ export function ActivityDetailDialog({
     setShowDeleteConfirm(true);
   };
 
-  // Fungsi untuk konfirmasi hapus
   const confirmDelete = () => {
     if (activity) {
       setIsDeleting(true);
@@ -141,11 +140,14 @@ export function ActivityDetailDialog({
               <Calendar className="h-5 w-5 text-blue-600" />
               Detail Kegiatan
             </DialogTitle>
-            <div className="flex justify-end">
-              {activity.activityType === "PERJALANAN_DINAS" && (
-                <ExportDinasButton activityId={activity.id} />
+            {activity.activityType === "PERJALANAN_DINAS" &&
+              !activity.strikethrough && (
+                <div className="flex justify-end">
+                  {activity.activityType === "PERJALANAN_DINAS" && (
+                    <ExportDinasButton activityId={activity.id} />
+                  )}
+                </div>
               )}
-            </div>
           </DialogHeader>
 
           <div className="space-y-6">
