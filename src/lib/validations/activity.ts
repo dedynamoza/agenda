@@ -82,7 +82,9 @@ export const activitySchema = z
     departureDate: z.coerce.date().optional().nullable(),
     transportationFrom: z.string().optional(),
     destination: z.string().optional(),
-    transportationType: z.enum(["FLIGHT", "FERRY", "TRAIN"]).optional(),
+    transportationType: z
+      .enum(["FLIGHT", "FERRY", "TRAIN", "CAR", "BUS"])
+      .optional(),
     bookingFlightNo: z.string().optional(),
     departureFrom: z.string().optional(),
     arrivalTo: z.string().optional(),
