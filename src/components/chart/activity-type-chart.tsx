@@ -14,14 +14,7 @@ import { cn, getActivityTypeLabel } from "@/lib/utils";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
-const COLORS = [
-  "#f59e0b",
-  "#d97706",
-  "#b45309",
-  "#92400e",
-  "#78350f",
-  "#451a03",
-];
+const COLORS = ["#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f"];
 
 interface ActivityTypeChartProps {
   data?: Record<string, number>;

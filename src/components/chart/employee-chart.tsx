@@ -20,14 +20,7 @@ interface EmployeeChartProps {
   className?: string;
 }
 
-const COLORS = [
-  "#3b82f6",
-  "#1d4ed8",
-  "#1e40af",
-  "#1e3a8a",
-  "#172554",
-  "#0f172a",
-];
+const COLORS = ["#3b82f6", "#1d4ed8", "#1e40af", "#1e3a8a", "#172554"];
 
 export function EmployeeChart({
   data = {},
