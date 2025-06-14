@@ -5,7 +5,7 @@ import path from "path";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
-import type { PDFPage, RGB } from "pdf-lib";
+import type { PDFPage, RGB, PDFFont } from "pdf-lib";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 export async function GET(request: NextRequest) {
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const margin = 50;
     const contentWidth = width - margin * 2;
 
-    // Try to embed logo if available
+    // HEADER SECTION - Logo positioned like a proper letterhead
     try {
       const logoPath = path.join(process.cwd(), "public", "logo.jpeg");
       if (fs.existsSync(logoPath)) {
@@ -71,9 +71,9 @@ export async function GET(request: NextRequest) {
         const logoImage = await pdfDoc.embedJpg(logoBytes);
 
         // Calculate logo dimensions to maintain aspect ratio
-        const maxLogoHeight = 50;
-        const maxLogoWidth = 100;
-        const logoDims = logoImage.scale(1); // Get original dimensions
+        const maxLogoHeight = 60;
+        const maxLogoWidth = 120;
+        const logoDims = logoImage.scale(1);
 
         // Calculate scale to fit within max dimensions while maintaining aspect ratio
         const scaleWidth = maxLogoWidth / logoDims.width;
@@ -83,33 +83,36 @@ export async function GET(request: NextRequest) {
         const scaledWidth = logoDims.width * scale;
         const scaledHeight = logoDims.height * scale;
 
-        // Position logo in top right corner
+        // Position logo at the very top right corner like a letterhead
         page.drawImage(logoImage, {
           x: width - margin - scaledWidth,
-          y: height - margin - scaledHeight,
+          y: height - 30 - scaledHeight, // 30px from top
           width: scaledWidth,
           height: scaledHeight,
         });
       }
     } catch (error) {
       console.error("Error embedding logo:", error);
-      // Continue without logo if there's an error
     }
 
-    // Draw header - positioned at left side
+    // BODY SECTION
+    // Position content well below the header area to avoid overlap with logo
+    const bodyStartY = height - 120; // Start body content lower to give proper space for letterhead
+
+    // Trip Itinerary title in body section (outside dashed border)
     page.drawText(
       "Trip Itinerary " +
         format(new Date(activity.date), "MMMM yyyy", { locale: id }),
       {
         x: margin,
-        y: height - margin - 20,
+        y: bodyStartY,
         size: 16,
         font: fontBold,
         color: rgb(0, 0, 0),
       }
     );
 
-    // Draw employee info
+    // Draw employee info below the title
     const employeeName = activity.employee.name;
     const birthDate = activity.birthDate
       ? format(new Date(activity.birthDate), "dd MMM yyyy", { locale: id })
@@ -118,14 +121,14 @@ export async function GET(request: NextRequest) {
 
     page.drawText(`${employeeName} (TTL ${birthDate}, ${idCard})`, {
       x: margin,
-      y: height - margin - 50,
+      y: bodyStartY - 20,
       size: 12,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // Calculate content area dimensions
-    const contentTop = height - margin - 70;
+    // Calculate content area dimensions for the dashed box
+    const contentTop = bodyStartY - 35; // Position dashed box below employee info
 
     // Format departure date
     const departureDate = activity.departureDate
@@ -154,15 +157,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Prepare content for both columns
-    const leftColumnLines = [];
-    const rightColumnLines: {
+    const leftColumnLines: Array<{
       text: string;
-      font: typeof fontRegular;
+      font: PDFFont;
       size: number;
-    }[] = [];
+    }> = [];
+    const rightColumnLines: Array<{
+      text: string;
+      font: PDFFont;
+      size: number;
+    }> = [];
 
     // Left column content - Transportation details
-    // Title line with departure date and route - simplified format
     const departureCityFrom = activity.transportationFrom || "";
     const destination = activity.destination || "";
     leftColumnLines.push({
@@ -234,7 +240,7 @@ export async function GET(request: NextRequest) {
 
     // Right column content - Accommodation details
     if (activity.dailyActivities && activity.dailyActivities.length > 0) {
-      activity.dailyActivities.forEach((dailyActivity) => {
+      activity.dailyActivities.forEach((dailyActivity, idx) => {
         const hotelCheckIn = dailyActivity.hotelCheckIn
           ? format(new Date(dailyActivity.hotelCheckIn), "d MMMM yyyy", {
               locale: id,
@@ -266,6 +272,15 @@ export async function GET(request: NextRequest) {
         if (dailyActivity.hotelAddress) {
           rightColumnLines.push({
             text: dailyActivity.hotelAddress,
+            font: fontRegular,
+            size: 11,
+          });
+        }
+
+        // Add 1 line space between hotels, except after the last one
+        if (idx < activity.dailyActivities.length - 1) {
+          rightColumnLines.push({
+            text: "",
             font: fontRegular,
             size: 11,
           });
@@ -312,7 +327,7 @@ export async function GET(request: NextRequest) {
       rgb(0.8, 0.8, 0.8)
     );
 
-    // Draw left column content with minimal spacing
+    // Draw left column content
     let yPos = boxTop - 15;
     for (let i = 0; i < leftColumnLines.length; i++) {
       const item = leftColumnLines[i];
@@ -331,11 +346,11 @@ export async function GET(request: NextRequest) {
         });
 
         if (j < lines.length - 1) {
-          yPos -= 14; // Move down for wrapped text
+          yPos -= 14;
         }
       }
 
-      yPos -= 14; // Move down for next item with minimal spacing
+      yPos -= 14;
     }
 
     // Draw right column content with minimal spacing
@@ -361,7 +376,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      yPos -= 14; // Move down for next item with minimal spacing
+      yPos -= 14;
     }
 
     // Draw footer at fixed position at bottom
@@ -401,7 +416,6 @@ export async function GET(request: NextRequest) {
     // Serialize the PDF to bytes
     const pdfBytes = await pdfDoc.save();
 
-    // Return the PDF as a response
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
@@ -418,8 +432,6 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to wrap text
-import type { PDFFont } from "pdf-lib";
-
 function wrapText(
   text: string,
   font: PDFFont,
@@ -518,7 +530,7 @@ function drawDashedLine(
       page.drawLine({
         start: { x: fromX + startDash * direction, y: fromY },
         end: { x: fromX + endDash * direction, y: fromY },
-        thickness: 0.5, // Thinner line
+        thickness: 0.5,
         color: color,
       });
     } else {
@@ -526,7 +538,7 @@ function drawDashedLine(
       page.drawLine({
         start: { x: fromX, y: fromY + startDash * direction },
         end: { x: fromX, y: fromY + endDash * direction },
-        thickness: 0.5, // Thinner line
+        thickness: 0.5,
         color: color,
       });
     }
