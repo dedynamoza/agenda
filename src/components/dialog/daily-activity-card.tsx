@@ -137,7 +137,7 @@ export function DailyActivityCard({
                   <FormItem className="flex-1">
                     <FormControl>
                       <Input
-                        placeholder={`Kegiatan ${itemIndex + 1}`}
+                        placeholder="Contoh: Meeting dengan klien"
                         {...field}
                       />
                     </FormControl>

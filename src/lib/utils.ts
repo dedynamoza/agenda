@@ -242,9 +242,9 @@ export function getAvailableTimeSlots(selectedDate: Date): string[] {
 export const ACTIVITY_TYPES = [
   { value: "PROSPECT_MEETING", label: "Prospect Meeting" },
   { value: "ESCORT_TEAM", label: "Escort Team" },
-  { value: "PERJALANAN_DINAS", label: "Perjalanan Dinas" },
-  { value: "TAMU_UNDANGAN", label: "Tamu Undangan" },
-  { value: "RETENTION_TEAM", label: "Retention Team" },
+  { value: "PERJALANAN_DINAS", label: "Business Trip" },
+  { value: "TAMU_UNDANGAN", label: "Invitation" },
+  { value: "RETENTION_TEAM", label: "Retention Meeting" },
 ];
 
 export const TRANSPORTATION_TYPES = [
