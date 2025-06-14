@@ -71,7 +71,7 @@ export const activitySchema = z
       "ESCORT_TEAM",
       "PERJALANAN_DINAS",
       "TAMU_UNDANGAN",
-      "RETENTION_TEAM"
+      "RETENTION_TEAM",
       "INTERNAL_MEETING",
     ]),
     branchId: z.string().min(1, "Branch harus dipilih"),
