@@ -51,10 +51,10 @@ export async function GET(request: NextRequest) {
     const contentWidth = width - margin * 2;
 
     try {
-      const logoPath = path.join(process.cwd(), "public", "logo.jpeg");
+      const logoPath = path.join(process.cwd(), "public", "logo.png");
       if (fs.existsSync(logoPath)) {
         const logoBytes = fs.readFileSync(logoPath);
-        const logoImage = await pdfDoc.embedJpg(logoBytes);
+        const logoImage = await pdfDoc.embedPng(logoBytes);
         const logoDims = logoImage.scale(1);
         const scale = Math.min(120 / logoDims.width, 60 / logoDims.height);
         const scaledWidth = logoDims.width * scale;
