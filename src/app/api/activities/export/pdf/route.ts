@@ -271,13 +271,13 @@ export async function GET(request: NextRequest) {
     const footerY = 70;
 
     const footerLines = [
-      { text: "PT. Kenjenben", font: fontBold },
+      { text: "PT. Supra Primatama Nusantara (Biznet)", font: fontBold },
       {
-        text: "Ruko Permata 2, 5th Floor. Jl. Jendral Sudirman 12-19. Jakarta 10220 – Indonesia.",
+        text: "MidPlaza 2, 8th Floor. Jl. Jendral Sudirman 10-11. Jakarta 10220 – Indonesia. ",
         font: fontRegular,
       },
       {
-        text: "P +62-21-57998675  Call Biznet 1500248  www.Kenjenben.com",
+        text: "P +62-21-57998888  Call Biznet 1500988  www.biznetnetworks.com",
         font: fontRegular,
       },
     ];
