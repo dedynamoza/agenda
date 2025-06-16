@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const contentWidth = width - margin * 2;
 
     try {
-      const logoPath = path.join(process.cwd(), "public", "logo.png");
+      const logoPath = path.join(process.cwd(), "public", "logo.jpeg");
       if (fs.existsSync(logoPath)) {
         const logoBytes = fs.readFileSync(logoPath);
         const logoImage = await pdfDoc.embedJpg(logoBytes);
