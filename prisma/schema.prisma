@@ -54,6 +54,8 @@ enum ActivityType {
   PERJALANAN_DINAS
   TAMU_UNDANGAN
   RETENTION_TEAM
+  INTERNAL_MEETING
+  PROPERTY_SURVEY
 }
 
 enum TransportationType {

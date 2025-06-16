@@ -63,6 +63,8 @@ const ACTIVITY_COLORS = {
   PERJALANAN_DINAS: "bg-purple-500",
   TAMU_UNDANGAN: "bg-amber-500",
   RETENTION_TEAM: "bg-red-500",
+  INTERNAL_MEETING: "bg-gray-500",
+  PROPERTY_SURVEY: "bg-teal-500",
 };
 
 export function ActivityDetailDialog({

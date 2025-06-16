@@ -73,6 +73,7 @@ export const activitySchema = z
       "TAMU_UNDANGAN",
       "RETENTION_TEAM",
       "INTERNAL_MEETING",
+      "PROPERTY_SURVEY",
     ]),
     branchId: z.string().min(1, "Branch harus dipilih"),
     employeeId: z.string().min(1, "Employee harus dipilih"),

@@ -245,6 +245,8 @@ export const ACTIVITY_TYPES = [
   { value: "PERJALANAN_DINAS", label: "Business Trip" },
   { value: "TAMU_UNDANGAN", label: "Invitation" },
   { value: "RETENTION_TEAM", label: "Retention Meeting" },
+  { value: "INTERNAL_MEETING", label: "Internal Meeting" },
+  { value: "PROPERTY_SURVEY", label: "Property Survey" },
 ];
 
 export const TRANSPORTATION_TYPES = [

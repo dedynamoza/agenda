@@ -98,6 +98,8 @@ const ACTIVITY_COLORS = {
   PERJALANAN_DINAS: "bg-purple-500",
   TAMU_UNDANGAN: "bg-amber-500",
   RETENTION_TEAM: "bg-red-500",
+  INTERNAL_MEETING: "bg-gray-500",
+  PROPERTY_SURVEY: "bg-teal-500",
 };
 
 const ACTIVITY_ICONS = {
@@ -106,6 +108,8 @@ const ACTIVITY_ICONS = {
   PERJALANAN_DINAS: Plane,
   TAMU_UNDANGAN: Users,
   RETENTION_TEAM: Users,
+  INTERNAL_MEETING: Calendar,
+  PROPERTY_SURVEY: Briefcase,
 };
 
 export function WeekView({

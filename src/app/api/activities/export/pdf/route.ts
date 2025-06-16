@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       {
         x: margin,
         y: bodyStartY,
-        size: 16,
+        size: 12,
         font: fontBold,
         color: rgb(0, 0, 0),
       }
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     page.drawText(`${employeeName} (TTL ${birthDate}, ${idCard})`, {
       x: margin,
       y: bodyStartY - 20,
-      size: 12,
+      size: 10,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
@@ -174,21 +174,21 @@ export async function GET(request: NextRequest) {
     leftColumnLines.push({
       text: `${departureDate} – ${transportText} ${departureCityFrom} to ${destination}`,
       font: fontBold,
-      size: 11,
+      size: 9,
     });
 
     // Transportation name
     leftColumnLines.push({
       text: activity.transportationName || "",
       font: fontBold,
-      size: 11,
+      size: 9,
     });
 
     // Booking code
     leftColumnLines.push({
       text: `Booking Kode : ${activity.bookingFlightNo || ""}`,
       font: fontRegular,
-      size: 11,
+      size: 9,
     });
 
     // Airports and times
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
     leftColumnLines.push({
       text: `${departureAirport} - ${arrivalAirport}`,
       font: fontRegular,
-      size: 11,
+      size: 9,
     });
 
     // Daily activities - now included inside the box
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       leftColumnLines.push({
         text: "",
         font: fontRegular,
-        size: 11,
+        size: 9,
       });
 
       activity.dailyActivities.forEach((dailyActivity) => {
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
         leftColumnLines.push({
           text: `${activityDate}`,
           font: fontRegular,
-          size: 11,
+          size: 9,
         });
 
         // Activity items
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
           leftColumnLines.push({
             text: itemsText,
             font: fontRegular,
-            size: 11,
+            size: 9,
           });
         }
       });
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
           rightColumnLines.push({
             text: `${hotelCheckIn} – ${hotelCheckout}`,
             font: fontBold,
-            size: 11,
+            size: 9,
           });
         }
 
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
           rightColumnLines.push({
             text: dailyActivity.hotelName,
             font: fontBold,
-            size: 11,
+            size: 9,
           });
         }
 
@@ -273,7 +273,7 @@ export async function GET(request: NextRequest) {
           rightColumnLines.push({
             text: dailyActivity.hotelAddress,
             font: fontRegular,
-            size: 11,
+            size: 9,
           });
         }
 
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
           rightColumnLines.push({
             text: "",
             font: fontRegular,
-            size: 11,
+            size: 9,
           });
         }
       });
@@ -385,7 +385,7 @@ export async function GET(request: NextRequest) {
     page.drawText("PT. Kenjenben", {
       x: margin,
       y: footerY,
-      size: 10,
+      size: 8,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
