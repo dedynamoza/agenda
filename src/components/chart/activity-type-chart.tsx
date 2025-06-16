@@ -6,13 +6,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Command } from "lucide-react";
 import { cn, getActivityTypeLabel } from "@/lib/utils";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMemo } from "react";
 
 const COLORS = ["#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f"];
 
@@ -36,6 +37,15 @@ export function ActivityTypeChart({
     displayName: getActivityTypeLabel(type),
     value,
   }));
+
+  const totalChartData = useMemo(() => {
+    return chartData.reduce((acc, item) => {
+      if (item.value > 0) {
+        acc.push(item);
+      }
+      return acc;
+    }, [] as typeof chartData);
+  }, [chartData]);
 
   if (isLoading) {
     return (
@@ -110,6 +120,31 @@ export function ActivityTypeChart({
                         fill={COLORS[index % COLORS.length]}
                       />
                     ))}
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          return (
+                            <text
+                              x={viewBox.cx}
+                              y={viewBox.cy}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                            >
+                              <tspan
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                className="fill-foreground text-3xl font-bold"
+                              >
+                                {totalChartData.reduce(
+                                  (sum, item) => sum + item.value,
+                                  0
+                                )}
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>

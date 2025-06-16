@@ -6,13 +6,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { cn } from "@/lib/utils";
 import { GitBranch } from "lucide-react";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMemo } from "react";
 
 const COLORS = ["#10b981", "#059669", "#047857", "#065f46", "#064e3b"];
 
@@ -35,6 +36,15 @@ export function BranchChart({
     name,
     value,
   }));
+
+  const totalChartData = useMemo(() => {
+    return chartData.reduce((acc, item) => {
+      if (item.value > 0) {
+        acc.push(item);
+      }
+      return acc;
+    }, [] as typeof chartData);
+  }, [chartData]);
 
   if (isLoading) {
     return (
@@ -98,7 +108,7 @@ export function BranchChart({
                   />
                   <Pie
                     data={chartData}
-                    innerRadius={isMobile ? 20 : 40}
+                    innerRadius={isMobile ? 20 : 50}
                     strokeWidth={5}
                     dataKey="value"
                   >
@@ -108,6 +118,32 @@ export function BranchChart({
                         fill={COLORS[index % COLORS.length]}
                       />
                     ))}
+
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          return (
+                            <text
+                              x={viewBox.cx}
+                              y={viewBox.cy}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                            >
+                              <tspan
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                className="fill-foreground text-3xl font-bold"
+                              >
+                                {totalChartData.reduce(
+                                  (sum, item) => sum + item.value,
+                                  0
+                                )}
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>

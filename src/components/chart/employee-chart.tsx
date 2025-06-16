@@ -6,13 +6,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { cn } from "@/lib/utils";
 import { Users } from "lucide-react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
+import { useMemo } from "react";
 
 interface EmployeeChartProps {
   data?: Record<string, number>;
@@ -35,6 +36,15 @@ export function EmployeeChart({
     name,
     value,
   }));
+
+  const totalChartData = useMemo(() => {
+    return chartData.reduce((acc, item) => {
+      if (item.value > 0) {
+        acc.push(item);
+      }
+      return acc;
+    }, [] as typeof chartData);
+  }, [chartData]);
 
   if (isLoading) {
     return (
@@ -108,6 +118,32 @@ export function EmployeeChart({
                         fill={COLORS[index % COLORS.length]}
                       />
                     ))}
+
+                    <Label
+                      content={({ viewBox }) => {
+                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                          return (
+                            <text
+                              x={viewBox.cx}
+                              y={viewBox.cy}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                            >
+                              <tspan
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                className="fill-foreground text-3xl font-bold"
+                              >
+                                {totalChartData.reduce(
+                                  (sum, item) => sum + item.value,
+                                  0
+                                )}
+                              </tspan>
+                            </text>
+                          );
+                        }
+                      }}
+                    />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>

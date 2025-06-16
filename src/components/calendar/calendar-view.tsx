@@ -457,7 +457,7 @@ export function CalendarView({
                           <div className="hidden sm:flex items-center gap-2">
                             <div
                               className={cn(
-                                "font-medium truncate",
+                                "font-medium",
                                 dayActivities[0].strikethrough && "line-through"
                               )}
                             >
