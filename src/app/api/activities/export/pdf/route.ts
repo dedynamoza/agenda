@@ -1,5 +1,5 @@
+// pages/api/generate-trip-pdf.ts
 import { type NextRequest, NextResponse } from "next/server";
-
 import fs from "fs";
 import path from "path";
 import { format } from "date-fns";
@@ -21,24 +21,15 @@ export async function GET(request: NextRequest) {
     }
 
     const activity = await prisma.activity.findUnique({
-      where: {
-        id: activityId,
-        activityType: "PERJALANAN_DINAS",
-      },
+      where: { id: activityId, activityType: "PERJALANAN_DINAS" },
       include: {
         employee: true,
         branch: true,
         dailyActivities: {
           include: {
-            activityItems: {
-              orderBy: {
-                order: "asc",
-              },
-            },
+            activityItems: { orderBy: { order: "asc" } },
           },
-          orderBy: {
-            date: "asc",
-          },
+          orderBy: { date: "asc" },
         },
       },
     });
@@ -50,43 +41,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
+    const page = pdfDoc.addPage([595.28, 841.89]);
     const { width, height } = page.getSize();
-
-    // Get fonts
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    // Define margins and positions
     const margin = 50;
     const contentWidth = width - margin * 2;
 
-    // HEADER SECTION - Logo positioned like a proper letterhead
     try {
       const logoPath = path.join(process.cwd(), "public", "logo.jpeg");
       if (fs.existsSync(logoPath)) {
         const logoBytes = fs.readFileSync(logoPath);
         const logoImage = await pdfDoc.embedJpg(logoBytes);
-
-        // Calculate logo dimensions to maintain aspect ratio
-        const maxLogoHeight = 60;
-        const maxLogoWidth = 120;
         const logoDims = logoImage.scale(1);
-
-        // Calculate scale to fit within max dimensions while maintaining aspect ratio
-        const scaleWidth = maxLogoWidth / logoDims.width;
-        const scaleHeight = maxLogoHeight / logoDims.height;
-        const scale = Math.min(scaleWidth, scaleHeight);
-
+        const scale = Math.min(120 / logoDims.width, 60 / logoDims.height);
         const scaledWidth = logoDims.width * scale;
         const scaledHeight = logoDims.height * scale;
 
-        // Position logo at the very top right corner like a letterhead
         page.drawImage(logoImage, {
           x: width - margin - scaledWidth,
-          y: height - 30 - scaledHeight, // 30px from top
+          y: height - 30 - scaledHeight,
           width: scaledWidth,
           height: scaledHeight,
         });
@@ -95,11 +71,8 @@ export async function GET(request: NextRequest) {
       console.error("Error embedding logo:", error);
     }
 
-    // BODY SECTION
-    // Position content well below the header area to avoid overlap with logo
-    const bodyStartY = height - 120; // Start body content lower to give proper space for letterhead
+    const bodyStartY = height - 120;
 
-    // Trip Itinerary title in body section (outside dashed border)
     page.drawText(
       "Trip Itinerary " +
         format(new Date(activity.date), "MMMM yyyy", { locale: id }),
@@ -112,7 +85,6 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Draw employee info below the title
     const employeeName = activity.employee.name;
     const birthDate = activity.birthDate
       ? format(new Date(activity.birthDate), "dd MMM yyyy", { locale: id })
@@ -127,299 +99,207 @@ export async function GET(request: NextRequest) {
       color: rgb(0, 0, 0),
     });
 
-    // Calculate content area dimensions for the dashed box
-    const contentTop = bodyStartY - 35; // Position dashed box below employee info
+    const contentTop = bodyStartY - 35;
 
-    // Format departure date
     const departureDate = activity.departureDate
       ? format(new Date(activity.departureDate), "d MMMM yyyy", { locale: id })
       : format(new Date(activity.date), "d MMMM yyyy", { locale: id });
 
-    // Calculate transportation type text
     let transportText = "Fly";
-    if (activity.transportationType) {
-      switch (activity.transportationType) {
-        case "FERRY":
-          transportText = "Ferry";
-          break;
-        case "TRAIN":
-          transportText = "Train";
-          break;
-        case "BUS":
-          transportText = "Bus";
-          break;
-        case "CAR":
-          transportText = "Drive";
-          break;
-        default:
-          transportText = "Fly";
-      }
+    switch (activity.transportationType) {
+      case "FERRY":
+        transportText = "Ferry";
+        break;
+      case "TRAIN":
+        transportText = "Train";
+        break;
+      case "BUS":
+        transportText = "Bus";
+        break;
+      case "CAR":
+        transportText = "Drive";
+        break;
     }
 
-    // Prepare content for both columns
-    const leftColumnLines: Array<{
-      text: string;
-      font: PDFFont;
-      size: number;
-    }> = [];
-    const rightColumnLines: Array<{
-      text: string;
-      font: PDFFont;
-      size: number;
-    }> = [];
+    const leftColumnLines: { text: string; font: PDFFont; size: number }[] = [];
+    const rightColumnLines: { text: string; font: PDFFont; size: number }[] =
+      [];
 
-    // Left column content - Transportation details
-    const departureCityFrom = activity.transportationFrom || "";
-    const destination = activity.destination || "";
     leftColumnLines.push({
-      text: `${departureDate} – ${transportText} ${departureCityFrom} to ${destination}`,
+      text: `${departureDate} – ${transportText} ${activity.transportationFrom} to ${activity.destination}`,
       font: fontBold,
       size: 9,
     });
-
-    // Transportation name
     leftColumnLines.push({
       text: activity.transportationName || "",
       font: fontBold,
       size: 9,
     });
-
-    // Booking code
     leftColumnLines.push({
       text: `Booking Kode : ${activity.bookingFlightNo || ""}`,
       font: fontRegular,
       size: 9,
     });
-
-    // Airports and times
-    const departureAirport = activity.departureFrom || "";
-    const arrivalAirport = activity.arrivalTo || "";
-
     leftColumnLines.push({
-      text: `${departureAirport} - ${arrivalAirport}`,
+      text: `${activity.departureFrom || ""} - ${activity.arrivalTo || ""}`,
       font: fontRegular,
       size: 9,
     });
 
-    // Daily activities - now included inside the box
-    if (activity.dailyActivities && activity.dailyActivities.length > 0) {
-      // Add a blank line before activities
-      leftColumnLines.push({
-        text: "",
-        font: fontRegular,
-        size: 9,
-      });
-
-      activity.dailyActivities.forEach((dailyActivity) => {
-        const activityDate = format(new Date(dailyActivity.date), "d MMMM", {
-          locale: id,
-        });
-
+    if (activity.dailyActivities?.length) {
+      leftColumnLines.push({ text: "", font: fontRegular, size: 9 });
+      for (const dailyActivity of activity.dailyActivities) {
         leftColumnLines.push({
-          text: `${activityDate}`,
+          text: format(new Date(dailyActivity.date), "d MMMM", { locale: id }),
           font: fontRegular,
           size: 9,
         });
-
-        // Activity items
-        if (
-          dailyActivity.activityItems &&
-          dailyActivity.activityItems.length > 0
-        ) {
-          const itemsText = dailyActivity.activityItems
-            .map((item) => item.name)
-            .join(", ");
-          leftColumnLines.push({
-            text: itemsText,
-            font: fontRegular,
-            size: 9,
-          });
-        }
-      });
+        const itemsText =
+          dailyActivity.activityItems?.map((item) => item.name).join(", ") ||
+          "";
+        leftColumnLines.push({ text: itemsText, font: fontRegular, size: 9 });
+      }
     }
 
-    // Right column content - Accommodation details
-    if (activity.dailyActivities && activity.dailyActivities.length > 0) {
+    if (activity.dailyActivities?.length) {
       activity.dailyActivities.forEach((dailyActivity, idx) => {
-        const hotelCheckIn = dailyActivity.hotelCheckIn
+        const checkIn = dailyActivity.hotelCheckIn
           ? format(new Date(dailyActivity.hotelCheckIn), "d MMMM yyyy", {
               locale: id,
             })
           : "";
-
-        const hotelCheckout = dailyActivity.hotelCheckOut
+        const checkOut = dailyActivity.hotelCheckOut
           ? format(new Date(dailyActivity.hotelCheckOut), "d MMMM yyyy", {
               locale: id,
             })
           : "";
-
-        if (hotelCheckIn && hotelCheckout) {
+        if (checkIn && checkOut)
           rightColumnLines.push({
-            text: `${hotelCheckIn} – ${hotelCheckout}`,
+            text: `${checkIn} – ${checkOut}`,
             font: fontBold,
             size: 9,
           });
-        }
-
-        if (dailyActivity.hotelName) {
+        if (dailyActivity.hotelName)
           rightColumnLines.push({
             text: dailyActivity.hotelName,
             font: fontBold,
             size: 9,
           });
-        }
-
-        if (dailyActivity.hotelAddress) {
+        if (dailyActivity.hotelAddress)
           rightColumnLines.push({
             text: dailyActivity.hotelAddress,
             font: fontRegular,
             size: 9,
           });
-        }
-
-        // Add 1 line space between hotels, except after the last one
-        if (idx < activity.dailyActivities.length - 1) {
-          rightColumnLines.push({
-            text: "",
-            font: fontRegular,
-            size: 9,
-          });
-        }
+        if (idx < activity.dailyActivities.length - 1)
+          rightColumnLines.push({ text: "", font: fontRegular, size: 9 });
       });
     }
 
-    // Calculate the number of lines needed for each column
-    const leftColumnHeight = leftColumnLines.length * 14; // 14 pixels per line
-    const rightColumnHeight = rightColumnLines.length * 14; // 14 pixels per line
+    const wrapAndCountLines = (
+      lines: typeof leftColumnLines,
+      maxWidth: number
+    ) =>
+      lines.reduce(
+        (count, item) =>
+          count + wrapText(item.text, item.font, item.size, maxWidth).length,
+        0
+      );
 
-    // Use the taller column to determine box height
-    const boxHeight = Math.max(leftColumnHeight, rightColumnHeight) + 30; // Add padding
-
-    // Draw content box with thinner dashed border
-    const dashLength = 2; // Reduced from 3
-    const dashGap = 2; // Reduced from 3
+    const columnWidth = contentWidth / 2;
+    const totalLinesLeft = wrapAndCountLines(leftColumnLines, columnWidth - 4);
+    const totalLinesRight = wrapAndCountLines(
+      rightColumnLines,
+      columnWidth - 4
+    );
+    const boxHeight = Math.max(totalLinesLeft, totalLinesRight) * 10 + 20;
     const boxTop = contentTop;
     const boxBottom = boxTop - boxHeight;
-    const columnWidth = contentWidth / 2;
     const boxMiddleX = margin + columnWidth;
 
-    // Draw box outline with dashed border
     drawDashedRectangle(
       page,
       margin,
       boxBottom,
       contentWidth,
       boxHeight,
-      dashLength,
-      dashGap,
+      2,
+      2,
       rgb(0.8, 0.8, 0.8)
     );
-
-    // Draw vertical divider with dashed line
     drawDashedLine(
       page,
       boxMiddleX,
       boxTop,
       boxMiddleX,
       boxBottom,
-      dashLength,
-      dashGap,
+      2,
+      2,
       rgb(0.8, 0.8, 0.8)
     );
 
-    // Draw left column content
-    let yPos = boxTop - 15;
-    for (let i = 0; i < leftColumnLines.length; i++) {
-      const item = leftColumnLines[i];
-
-      // Check if text needs to be wrapped
-      const maxLineWidth = columnWidth - 20;
-      const lines = wrapText(item.text, item.font, item.size, maxLineWidth);
-
-      for (let j = 0; j < lines.length; j++) {
-        page.drawText(lines[j], {
-          x: margin + 10,
+    let yPos = boxTop - 10;
+    for (const item of leftColumnLines) {
+      const lines = wrapText(item.text, item.font, item.size, columnWidth - 4);
+      for (const line of lines) {
+        page.drawText(line, {
+          x: margin + 2,
           y: yPos,
           size: item.size,
           font: item.font,
           color: rgb(0, 0, 0),
         });
-
-        if (j < lines.length - 1) {
-          yPos -= 14;
-        }
+        yPos -= 10;
       }
-
-      yPos -= 14;
     }
 
-    // Draw right column content with minimal spacing
-    yPos = boxTop - 15;
-    for (let i = 0; i < rightColumnLines.length; i++) {
-      const item = rightColumnLines[i];
-
-      // Check if text needs to be wrapped
-      const maxLineWidth = columnWidth - 20;
-      const lines = wrapText(item.text, item.font, item.size, maxLineWidth);
-
-      for (let j = 0; j < lines.length; j++) {
-        page.drawText(lines[j], {
-          x: boxMiddleX + 10,
+    yPos = boxTop - 10;
+    for (const item of rightColumnLines) {
+      const lines = wrapText(item.text, item.font, item.size, columnWidth - 4);
+      for (const line of lines) {
+        page.drawText(line, {
+          x: boxMiddleX + 2,
           y: yPos,
           size: item.size,
           font: item.font,
           color: rgb(0, 0, 0),
         });
-
-        if (j < lines.length - 1) {
-          yPos -= 14; // Move down for wrapped text
-        }
+        yPos -= 10;
       }
-
-      yPos -= 14;
     }
 
-    // Draw footer at fixed position at bottom
     const footerY = 70;
 
-    page.drawText("PT. Kenjenben", {
-      x: margin,
-      y: footerY,
-      size: 8,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
-
-    page.drawText(
-      "Ruko Permata 2, 5th Floor. Jl. Jendral Sudirman 12-19. Jakarta 10220 – Indonesia.",
+    const footerLines = [
+      { text: "PT. Kenjenben", font: fontBold },
       {
-        x: margin,
-        y: footerY - 15,
-        size: 8,
+        text: "Ruko Permata 2, 5th Floor. Jl. Jendral Sudirman 12-19. Jakarta 10220 – Indonesia.",
         font: fontRegular,
-        color: rgb(0, 0, 0),
-      }
-    );
+      },
+      {
+        text: "P +62-21-57998675  Call Biznet 1500248  www.Kenjenben.com",
+        font: fontRegular,
+      },
+    ];
 
-    page.drawText("P +62-21-57998675  Call Biznet 1500248  wwwKenjenben.com", {
-      x: margin,
-      y: footerY - 30,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0, 0, 0),
+    footerLines.forEach((line, index) => {
+      page.drawText(line.text, {
+        x: margin,
+        y: footerY - index * 9,
+        size: 8,
+        font: line.font,
+        color: rgb(0, 0, 0),
+      });
     });
 
+    const pdfBytes = await pdfDoc.save();
     const dateFileName = format(new Date(activity.date), "d MMMM yyyy", {
       locale: id,
     });
-
-    // Serialize the PDF to bytes
-    const pdfBytes = await pdfDoc.save();
-
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${dateFileName}_Trip Itenary_${activity.employee.name}.pdf"`,
+        "Content-Disposition": `attachment; filename=\"${dateFileName}_Trip Itenary_${activity.employee.name}.pdf\"`,
       },
     });
   } catch (error) {
@@ -431,7 +311,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function to wrap text
 function wrapText(
   text: string,
   font: PDFFont,
@@ -439,27 +318,19 @@ function wrapText(
   maxWidth: number
 ): string[] {
   if (!text) return [""];
-
   const words = text.split(" ");
   const lines: string[] = [];
   let currentLine = "";
-
-  words.forEach((word) => {
+  for (const word of words) {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
     const width = font.widthOfTextAtSize(testLine, fontSize);
-
-    if (width < maxWidth) {
-      currentLine = testLine;
-    } else {
+    if (width < maxWidth) currentLine = testLine;
+    else {
       lines.push(currentLine);
       currentLine = word;
     }
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
   }
-
+  if (currentLine) lines.push(currentLine);
   return lines;
 }
 
@@ -473,7 +344,6 @@ function drawDashedRectangle(
   dashGap: number,
   color: RGB
 ) {
-  // Top line
   drawDashedLine(
     page,
     x,
@@ -484,8 +354,6 @@ function drawDashedRectangle(
     dashGap,
     color
   );
-
-  // Right line
   drawDashedLine(
     page,
     x + width,
@@ -496,15 +364,10 @@ function drawDashedRectangle(
     dashGap,
     color
   );
-
-  // Bottom line
   drawDashedLine(page, x + width, y, x, y, dashLength, dashGap, color);
-
-  // Left line
   drawDashedLine(page, x, y, x, y + height, dashLength, dashGap, color);
 }
 
-// Helper function to draw a dashed line with thinner lines
 function drawDashedLine(
   page: PDFPage,
   fromX: number,
@@ -522,24 +385,22 @@ function drawDashedLine(
   for (let i = 0; i < totalDashes; i++) {
     const startDash = i * (dashLength + dashGap);
     const endDash = startDash + dashLength;
-
     if (endDash > Math.abs(length)) break;
-
     if (isHorizontal) {
-      const direction = fromX < toX ? 1 : -1;
+      const dir = fromX < toX ? 1 : -1;
       page.drawLine({
-        start: { x: fromX + startDash * direction, y: fromY },
-        end: { x: fromX + endDash * direction, y: fromY },
+        start: { x: fromX + startDash * dir, y: fromY },
+        end: { x: fromX + endDash * dir, y: fromY },
         thickness: 0.5,
-        color: color,
+        color,
       });
     } else {
-      const direction = fromY < toY ? 1 : -1;
+      const dir = fromY < toY ? 1 : -1;
       page.drawLine({
-        start: { x: fromX, y: fromY + startDash * direction },
-        end: { x: fromX, y: fromY + endDash * direction },
+        start: { x: fromX, y: fromY + startDash * dir },
+        end: { x: fromX, y: fromY + endDash * dir },
         thickness: 0.5,
-        color: color,
+        color,
       });
     }
   }
