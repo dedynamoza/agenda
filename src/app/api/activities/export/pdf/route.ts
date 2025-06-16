@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       size: 9,
     });
     leftColumnLines.push({
-      text: `Booking Kode : ${activity.bookingFlightNo || ""}`,
+      text: `Booking Kode : ${activity.bookingFlightNo || "-"}`,
       font: fontRegular,
       size: 9,
     });

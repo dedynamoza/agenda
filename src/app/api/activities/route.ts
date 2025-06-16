@@ -50,16 +50,13 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get("employeeId");
 
     const whereClause: {
-      createdBy: string;
       employeeId?: string;
       date?: {
         gte?: Date;
         lt?: Date;
         lte?: Date;
       };
-    } = {
-      createdBy: user.id as string,
-    };
+    } = {};
 
     if (employeeId) {
       whereClause.employeeId = employeeId;

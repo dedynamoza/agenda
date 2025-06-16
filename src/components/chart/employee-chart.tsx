@@ -65,7 +65,7 @@ export function EmployeeChart({
     >
       <CardHeader className="px-2 lg:px-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-blue-500">
+          <CardTitle className="flex items-center gap-2 text-[#1d4ed8]">
             <Users className="h-5 w-5" />
             Summary Nama
           </CardTitle>

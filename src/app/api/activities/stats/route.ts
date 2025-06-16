@@ -12,9 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get("employeeId");
 
-    const whereClause: Record<string, unknown> = {
-      createdBy: user.id,
-    };
+    const whereClause: Record<string, unknown> = {};
 
     if (employeeId) {
       whereClause.employeeId = employeeId;

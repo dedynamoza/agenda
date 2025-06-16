@@ -174,13 +174,13 @@ export const activitySchema = z
         });
       }
 
-      if (!data.transportationName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Nama transportasi harus diisi untuk perjalanan dinas",
-          path: ["transportationName"],
-        });
-      }
+      // if (!data.transportationName) {
+      //   ctx.addIssue({
+      //     code: z.ZodIssueCode.custom,
+      //     message: "Nama transportasi harus diisi untuk perjalanan dinas",
+      //     path: ["transportationName"],
+      //   });
+      // }
     } else {
       // For other activity types, title and description are required
       if (!data.title || data.title.trim().length === 0) {

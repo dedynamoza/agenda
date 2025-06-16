@@ -967,7 +967,7 @@ export function ActivityDialog({
                       name="bookingFlightNo"
                       render={({ field }) => (
                         <FormItem className="w-full">
-                          <FormLabel>Kode Booking *</FormLabel>
+                          <FormLabel>Kode Booking</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Masukkan kode booking"
@@ -985,7 +985,7 @@ export function ActivityDialog({
                     name="transportationName"
                     render={({ field }) => (
                       <FormItem className="w-full">
-                        <FormLabel>Nama Transportasi *</FormLabel>
+                        <FormLabel>Nama Transportasi</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Contoh: Lion Air JT-844"
