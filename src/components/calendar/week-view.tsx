@@ -642,7 +642,7 @@ export function WeekView({
                             <div className="flex items-center gap-1">
                               <span
                                 className={cn(
-                                  "truncate",
+                                  "truncate max-w-40",
                                   activitiesForSlot[0].strikethrough &&
                                     "line-through"
                                 )}
