@@ -52,6 +52,7 @@ import type { ActivityRes } from "@/types/activity";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ActivityDetailDialogProps {
+  userId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activity: ActivityRes;
@@ -68,6 +69,7 @@ const ACTIVITY_COLORS = {
 };
 
 export function ActivityDetailDialog({
+  userId,
   open,
   onOpenChange,
   activity,
@@ -588,39 +590,41 @@ export function ActivityDetailDialog({
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button
-                onClick={handleEdit}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                disabled={isRescheduled}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Kegiatan
-              </Button>
+            {userId === activity.createdBy && (
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleEdit}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                  disabled={isRescheduled}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Kegiatan
+                </Button>
 
-              <Button
-                onClick={handleReschedule}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 cursor-pointer"
-                disabled={isRescheduled}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Jadwal Ulang
-              </Button>
+                <Button
+                  onClick={handleReschedule}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 cursor-pointer"
+                  disabled={isRescheduled}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Jadwal Ulang
+                </Button>
 
-              <Button
-                onClick={handleDelete}
-                variant="outline"
-                className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600 cursor-pointer"
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Hapus Kegiatan
-              </Button>
-            </div>
+                <Button
+                  onClick={handleDelete}
+                  variant="outline"
+                  className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Hapus Kegiatan
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

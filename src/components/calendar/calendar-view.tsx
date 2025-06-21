@@ -50,6 +50,7 @@ import type { ActivityRes } from "@/types/activity";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 
 interface CalendarViewProps {
+  userId?: string;
   currentYear: number;
   currentMonth: number;
   onMonthChange: (month: number, year?: number) => void;
@@ -78,6 +79,7 @@ const ACTIVITY_ICONS = {
 };
 
 export function CalendarView({
+  userId,
   currentYear,
   currentMonth,
   onMonthChange,
@@ -612,6 +614,7 @@ export function CalendarView({
       />
 
       <ActivityDetailDialog
+        userId={userId}
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         activity={selectedActivity!}

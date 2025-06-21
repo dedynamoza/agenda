@@ -5,6 +5,7 @@ export interface ActivityRes {
   date: Date;
   time: string;
   activityType: string;
+  createdBy?: string;
   strikethrough?: boolean;
   rescheduledFrom?: Date;
   rescheduledTo?: Date;

@@ -46,8 +46,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { ActivityRes } from "@/types/activity";
 import { useEmployeeFilter } from "@/hooks/use-employee-filter";
 import { cn, getIndonesiaDateInfo, isPastDateObject } from "@/lib/utils";
+import { DAYS, MONTHS } from "@/lib/constants";
 
 interface WeekViewProps {
+  userId?: string;
   currentYear: number;
   currentMonth: number;
   currentWeek: number;
@@ -56,22 +58,6 @@ interface WeekViewProps {
   viewMode: "calendar" | "week";
   onViewModeChange: (mode: "calendar" | "week") => void;
 }
-
-const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const MONTHS = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
 
 // Extended time slots to 22:00
 const TIME_SLOTS = [
@@ -113,6 +99,7 @@ const ACTIVITY_ICONS = {
 };
 
 export function WeekView({
+  userId,
   currentYear,
   currentMonth,
   currentWeek,
@@ -814,6 +801,7 @@ export function WeekView({
 
       {selectedActivity && (
         <ActivityDetailDialog
+          userId={userId}
           open={showDetailDialog}
           onOpenChange={setShowDetailDialog}
           activity={selectedActivity}

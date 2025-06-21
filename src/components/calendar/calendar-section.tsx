@@ -7,7 +7,11 @@ import { CalendarView } from "./calendar-view";
 
 import { getIndonesiaDateInfo } from "@/lib/utils";
 
-export function CalendarSection() {
+interface CalendarSectionProps {
+  userId?: string;
+}
+
+export function CalendarSection({ userId }: CalendarSectionProps) {
   const [viewMode, setViewMode] = useState<"calendar" | "week">("calendar");
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -127,6 +131,7 @@ export function CalendarSection() {
         <div className="p-4 md:p-6 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20">
           {viewMode === "calendar" ? (
             <CalendarView
+              userId={userId}
               currentYear={currentYear}
               currentMonth={currentMonth}
               onMonthChange={handleMonthChange}
@@ -135,6 +140,7 @@ export function CalendarSection() {
             />
           ) : (
             <WeekView
+              userId={userId}
               viewMode="week"
               currentYear={currentYear}
               currentMonth={currentMonth}
